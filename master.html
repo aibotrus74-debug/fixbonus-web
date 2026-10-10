@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FixBonus — Панель мастера</title>
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f4f6f8; color: #1a1a2e; padding: 16px; min-height: 100vh; padding-bottom: 90px; }
+        .header { margin-bottom: 20px; }
+        .workshop { font-size: 22px; font-weight: 700; }
+        .master-name { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+        .tab { padding: 10px 18px; border-radius: 20px; background: white; color: #64748b; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .tab.active { background: #2563eb; color: white; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .stat-value { font-size: 22px; font-weight: 700; }
+        .stat-value.green { color: #10b981; }
+        .stat-value.blue { color: #2563eb; }
+        .stat-value.orange { color: #f59e0b; }
+        .stat-value.red { color: #ef4444; }
+        .section { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+        .list-item { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .list-item:last-child { border-bottom: none; }
+        .item-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+        .item-sub { font-size: 12px; color: #94a3b8; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; }
+        .item-amount { font-size: 16px; font-weight: 600; color: #10b981; }
+        .item-amount.orange { color: #f59e0b; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+        .badge.closed { background: #d1fae5; color: #065f46; }
+        .badge.work { background: #fef3c7; color: #92400e; }
+        .loader { text-align: center; padding: 40px; color: #64748b; }
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; }
+        .empty { text-align: center; padding: 24px; color: #94a3b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loader">⏳ Загружаем данные мастера...</div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            API_URL: 'https://141.133.206.43.nip.io',
+            MASTER_MAX_ID: 100000001  // тестовый ID мастера
+        };
+
+        let currentTab = 'dashboard';
+        let cachedData = {};
+
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+        function init() {
+            if (typeof window.WebApp !== 'undefined') {
+                window.WebApp.ready();
+                // В будущем можно взять реальный MAX ID мастера
+            }
+            renderTabs();
+            loadTab('dashboard');
+        }
+
+        function renderTabs() {
+            const html = `
+                <div class="tabs">
+                    <button class="tab ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">📊 Дашборд</button>
+                    <button class="tab ${currentTab === 'orders' ? 'active' : ''}" onclick="switchTab('orders')">📋 Заявки</button>
+                    <button class="tab ${currentTab === 'clients' ? 'active' : ''}" onclick="switchTab('clients')">👥 Клиенты</button>
+                </div>
+            `;
+            return html;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            loadTab(tab);
+        }
+
+        async function loadTab(tab) {
+            document.getElementById('app').innerHTML = renderTabs() + '<div class="loader">⏳ Загружаем...</div>';
+
+            try {
+                let url;
+                if (tab === 'dashboard') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/dashboard`;
+                if (tab === 'orders') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders`;
+                if (tab === 'clients') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients`;
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                cachedData[tab] = data;
+
+                if (tab === 'dashboard') renderDashboard(data);
+                if (tab === 'orders') renderOrders(data);
+                if (tab === 'clients') renderClients(data);
+
+            } catch (err) {
+                document.getElementById('app').innerHTML = renderTabs() + `<div class="error-box">❌ ${err.message}</div>`;
+            }
+        }
+
+        // ============================================================
+        // ДАШБОРД
+        // ============================================================
+        function renderDashboard(data) {
+            const s = data.stats;
+            const m = data.master;
+
+            const ordersHtml = data.recent_orders.map(o => `
+                <div class="list-item">
+                    <div class="item-row">
+                        <div>
+                            <div class="item-title">№${o.id} — ${o.device}</div>
+                            <div class="item-sub">${o.client_name} • ${o.date || ''}</div>
+                        </div>
+                        <div class="item-amount">${fmt(o.final)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const html = `
+                <div class="header">
+                    <div class="workshop">🔧 ${m.workshop}</div>
+                    <div class="master-name">${m.full_name} • ИНН ${m.inn}</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">💵 Выручка</div>
+                        <div class="stat-value blue">${fmt(s.revenue)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">✅ Чистыми</div>
+                        <div class="stat-value green">${fmt(s.net_profit)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📦 Запчасти</div>
+                        <div class="stat-value orange">${fmt(s.parts)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🎁 Скидка</div>
+                        <div class="stat-value orange">${fmt(s.discount)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📊 Заявок</div>
+                        <div class="stat-value">${s.orders_count}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">👥 Клиентов</div>
+                        <div class="stat-value">${s.clients_count}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📈 Ср. чек</div>
+                        <div class="stat-value">${fmt(s.avg_check)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">💎 На руки</div>
+                        <div class="stat-value green">${fmt(s.net_after_tax)}</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">🕐 Последние заявки</div>
+                    ${ordersHtml || '<div class="empty">Пока нет заявок</div>'}
+                </div>
+            `;
+            document.getElementById('app').innerHTML = renderTabs() + html;
+        }
+
+        // ============================================================
+        // ЗАЯВКИ
+        // ============================================================
+        function renderOrders(data) {
+            const orders = data.orders.map(o => `
+                <div class="section">
+                    <div class="item-row">
+                        <div>
+                            <div class="item-title">№${o.id} — ${o.device}</div>
+                            <div class="item-sub">${o.client_name} (ID ${o.client_code}) • ${o.created_at || ''}</div>
+                        </div>
+                        <span class="badge ${o.status === 'closed' ? 'closed' : 'work'}">${o.status === 'closed' ? 'Закрыт' : o.status}</span>
+                    </div>
+                    <div style="margin-top:8px; font-size:13px; color:#64748b;">${o.works || ''}</div>
+                    <div class="item-row" style="margin-top:8px;">
+                        <div class="item-sub">К оплате: <b>${fmt(o.final)}</b></div>
+                        <div class="item-amount">Чистыми ${fmt(o.net)}</div>
+                    </div>
+                    ${o.warranty_until ? `<div class="item-sub" style="margin-top:6px;">🛡 Гарантия до ${o.warranty_until}</div>` : ''}
+                </div>
+            `).join('');
+
+            const html = `
+                <div class="header">
+                    <div class="workshop">📋 Заявки</div>
+                    <div class="master-name">Всего: ${data.orders.length}</div>
+                </div>
+                ${orders || '<div class="empty">Пока нет заявок</div>'}
+            `;
+            document.getElementById('app').innerHTML = renderTabs() + html;
+        }
+
+        // ============================================================
+        // КЛИЕНТЫ
+        // ============================================================
+        function renderClients(data) {
+            const clients = data.clients.map(c => `
+                <div class="section">
+                    <div class="item-row">
+                        <div>
+                            <div class="item-title">👤 ${c.name}</div>
+                            <div class="item-sub">ID для бонусов: <b>${c.referral_code || '—'}</b></div>
+                            <div class="item-sub">📞 ${c.phone || '—'}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="item-amount orange">${fmt(c.bonus_balance)}</div>
+                            <div class="item-sub">бонусов</div>
+                        </div>
+                    </div>
+                    <div class="item-sub" style="margin-top:8px;">
+                        ${c.orders_count} ремонтов • всего ${fmt(c.total_paid)}
+                    </div>
+                </div>
+            `).join('');
+
+            const html = `
+                <div class="header">
+                    <div class="workshop">👥 Клиенты</div>
+                    <div class="master-name">Всего: ${data.clients.length}</div>
+                </div>
+                ${clients || '<div class="empty">Пока нет клиентов</div>'}
+            `;
+            document.getElementById('app').innerHTML = renderTabs() + html;
+        }
+
+        // ============================================================
+        // УТИЛИТЫ
+        // ============================================================
+        function fmt(amount) {
+            if (amount === null || amount === undefined) return '0 ₽';
+            return Number(amount).toLocaleString('ru-RU', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }) + ' ₽';
+        }
+
+        window.addEventListener('load', init);
+        if (document.readyState === 'complete') init();
+    </script>
+</body>
+</html>
