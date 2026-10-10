@@ -4,327 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FixBonus — Мой кошелёк</title>
-
-    <!-- 1. Подключаем MAX Bridge (официальная библиотека) -->
     <script src="https://st.max.ru/js/max-web-app.js"></script>
-
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        body {
-            background: #f4f6f8;
-            color: #1a1a2e;
-            padding: 16px;
-            min-height: 100vh;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #2563eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        .user-name {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .user-platform {
-            font-size: 13px;
-            color: #64748b;
-        }
-
-        .balance-card {
-            background: linear-gradient(135deg, #f59e0b, #fbbf24);
-            border-radius: 20px;
-            padding: 24px;
-            color: white;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
-        }
-
-        .balance-label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 8px;
-        }
-
-        .balance-amount {
-            font-size: 40px;
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-
-        .balance-sub {
-            font-size: 13px;
-            opacity: 0.85;
-            margin-top: 8px;
-        }
-
-        .my-id-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .my-id-label {
-            font-size: 13px;
-            color: #64748b;
-            margin-bottom: 8px;
-        }
-
-        .my-id-value {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: 8px;
-            color: #2563eb;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .my-id-hint {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 8px;
-        }
-
-        .lots-section {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .lot-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .lot-item:last-child {
-            border-bottom: none;
-        }
-
-        .lot-reason {
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        .lot-expires {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-
-        .lot-amount {
-            font-size: 18px;
-            font-weight: 600;
-            color: #10b981;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 24px;
-            color: #94a3b8;
-            font-size: 14px;
-        }
-
-        .loader {
-            text-align: center;
-            padding: 40px;
-            color: #64748b;
-        }
-
-        .error-box {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 12px;
-            padding: 16px;
-            color: #991b1b;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f4f6f8; color: #1a1a2e; padding: 16px; min-height: 100vh; }
+        .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 600; }
+        .user-name { font-size: 18px; font-weight: 600; }
+        .user-platform { font-size: 13px; color: #64748b; }
+        .balance-card { background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 20px; padding: 24px; color: white; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3); }
+        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+        .balance-amount { font-size: 40px; font-weight: 700; letter-spacing: -1px; }
+        .balance-sub { font-size: 13px; opacity: 0.85; margin-top: 8px; }
+        .my-id-card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+        .my-id-label { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+        .my-id-value { font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #2563eb; font-variant-numeric: tabular-nums; }
+        .my-id-hint { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+        .lots-section { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+        .lot-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .lot-item:last-child { border-bottom: none; }
+        .lot-reason { font-size: 14px; margin-bottom: 4px; }
+        .lot-expires { font-size: 12px; color: #94a3b8; }
+        .lot-amount { font-size: 18px; font-weight: 600; color: #10b981; }
+        .empty-state { text-align: center; padding: 24px; color: #94a3b8; font-size: 14px; }
+        .loader { text-align: center; padding: 40px; color: #64748b; }
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; margin-bottom: 16px; }
+        .not-found-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 12px; padding: 20px; text-align: center; }
+        .not-found-box h3 { color: #92400e; margin-bottom: 12px; font-size: 18px; }
+        .max-id-big { font-size: 28px; font-weight: 700; color: #92400e; margin: 16px 0; letter-spacing: 2px; word-break: break-all; }
     </style>
 </head>
 <body>
-
     <div id="app">
         <div class="loader">⏳ Загружаем данные из MAX...</div>
     </div>
 
     <script>
         // ============================================================
-        // FIXBONUS — Кошелёк клиента (MVP)
+        // КОНФИГУРАЦИЯ
         // ============================================================
-        // Этот файл — наш первый Mini App.
-        // Он делает 3 вещи:
-        //   1. Получает данные пользователя из MAX через MAX Bridge
-        //   2. Показывает имя, ID и баланс бонусов
-        //   3. Демонстрирует, как связать Mini App с нашим Python-бэкендом
-        //
-        // ⚠️ ВАЖНО: сейчас данные о балансе берутся из ЗАГЛУШКИ (демо-данные).
-        // Позже мы заменим заглушку на реальный запрос к нашему Python-бэкенду.
-        // ============================================================
-
-        // --- КОНФИГУРАЦИЯ ---
         const CONFIG = {
-            // Здесь будет адрес нашего Python-бэкенда, когда мы его запустим.
-            // Пока заглушка — данные берём из демо-объекта ниже.
-            API_URL: 'https://141.133.206.43.nip.io',  // Например: 'https://api.fixbonus.ru'
-
-            // ID клиента из базы (для теста — Анна Смирнова)
-            DEMO_CLIENT_ID: 2
-        };
-
-        // --- ДЕМО-ДАННЫЕ (временные, пока нет бэкенда) ---
-        // Это те данные, которые мы сгенерировали в предыдущих скриптах:
-        // У Анны Смирновой сейчас (после всех операций) — 0 ₽, всё сгорело.
-        // Но мы покажем пример с бонусами, чтобы было наглядно.
-        const DEMO_DATA = {
-            client_id: 2,
-            name: 'Анна Смирнова',
-            referral_code: '18216',
-            bonus_balance: 1750,  // для наглядности показываем, как было бы
-            lots: [
-                {
-                    id: 4,
-                    amount: 1750,
-                    reason: 'Бонус за ремонт №3',
-                    expires_at: '10.10.2027',
-                    days_left: 364
-                }
-            ],
-            master: {
-                full_name: 'Иванов Иван Иванович',
-                inn: '123456789012',
-                workshop: 'FixPhone'
-            }
+            API_URL: 'https://141.133.206.43.nip.io'
         };
 
         // ============================================================
         // 1. ИНИЦИАЛИЗАЦИЯ MAX BRIDGE
         // ============================================================
         function initMaxApp() {
-            // Проверяем, загрузился ли MAX Bridge
             if (typeof window.WebApp === 'undefined') {
-                showError('⚠️ MAX Bridge не загрузился. Откройте страницу через чат-бота в MAX.');
+                showError('MAX Bridge не загрузился. Откройте через чат-бота в MAX.');
                 return;
             }
 
-            // Сообщаем MAX, что наш Mini App готов к работе
             window.WebApp.ready();
 
-            // Получаем данные пользователя
             const initData = window.WebApp.initDataUnsafe;
-
             console.log('📦 Данные из MAX:', initData);
 
-            // Извлекаем информацию о пользователе
             const user = initData && initData.user ? initData.user : null;
             const platform = window.WebApp.platform || 'unknown';
             const version = window.WebApp.version || '?';
 
-            // Формируем объект с данными для отображения
             const displayData = {
                 max_user_id: user ? user.id : null,
                 first_name: user ? user.first_name : 'Гость',
                 last_name: user ? user.last_name : '',
-                username: user ? user.username : null,
                 platform: platform,
                 version: version
             };
 
             console.log('👤 Пользователь:', displayData);
 
-            // Теперь загружаем баланс (пока из заглушки)
-            loadBalance(displayData);
+            if (!displayData.max_user_id) {
+                showError('Не удалось получить ваш MAX ID. Откройте через чат-бота.');
+                return;
+            }
+
+            loadClient(displayData);
         }
 
         // ============================================================
-        // 2. ЗАГРУЗКА БАЛАНСА
+        // 2. ЗАГРУЗКА ДАННЫХ КЛИЕНТА С БЭКЕНДА
         // ============================================================
-        async function loadBalance(displayData) {
+        async function loadClient(displayData) {
             try {
-                let data;
+                const url = `${CONFIG.API_URL}/api/client/${displayData.max_user_id}`;
+                console.log('🌐 Запрос к:', url);
 
-                // Если есть API_URL — идём на бэкенд (в будущем)
-                if (CONFIG.API_URL) {
-                    console.log('🌐 Запрос к бэкенду...');
-                    const response = await fetch(`${CONFIG.API_URL}/api/balance?client_id=${CONFIG.DEMO_CLIENT_ID}`, {
-                        headers: {
-                            'X-Max-Init-Data': window.WebApp.initData  // передаём для валидации
-                        }
-                    });
-                    if (!response.ok) throw new Error('Ошибка сервера');
-                    data = await response.json();
-                } else {
-                    // Иначе — берём демо-данные
-                    console.log('📦 Используем демо-данные (бэкенд ещё не подключён)');
-                    data = DEMO_DATA;
+                const response = await fetch(url);
+                console.log('📡 Ответ:', response.status);
+
+                if (response.status === 404) {
+                    // Клиент не найден — показываем MAX ID
+                    renderNotFound(displayData);
+                    return;
                 }
 
-                // Отрисовываем интерфейс
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('✅ Данные:', data);
                 renderWallet(displayData, data);
 
             } catch (err) {
-                console.error('❌ Ошибка загрузки:', err);
-                showError('Не удалось загрузить данные. Попробуйте позже.');
+                console.error('❌ Ошибка:', err);
+                showError('Не удалось загрузить данные: ' + err.message);
             }
         }
 
         // ============================================================
-        // 3. ОТРИСОВКА ИНТЕРФЕЙСА
+        // 3. ОТРИСОВКА КОШЕЛЬКА
         // ============================================================
         function renderWallet(displayData, data) {
-            const fullName = [displayData.first_name, displayData.last_name].filter(Boolean).join(' ');
-            const avatarLetter = displayData.first_name ? displayData.first_name[0].toUpperCase() : '?';
+            const fullName = data.name || [displayData.first_name, displayData.last_name].filter(Boolean).join(' ');
+            const avatarLetter = (data.name || displayData.first_name || '?')[0].toUpperCase();
 
-            // Генерируем HTML для партий бонусов
             let lotsHtml = '';
             if (data.lots && data.lots.length > 0) {
-                lotsHtml = data.lots.map(lot => {
-                    const daysClass = lot.days_left < 30 ? 'color: #ef4444;' : '';
-                    return `
-                        <div class="lot-item">
-                            <div>
-                                <div class="lot-reason">${lot.reason}</div>
-                                <div class="lot-expires">
-                                    Сгорят: ${lot.expires_at}
-                                    <span style="${daysClass}">(${lot.days_left} дн.)</span>
-                                </div>
-                            </div>
-                            <div class="lot-amount">${formatMoney(lot.amount)}</div>
+                lotsHtml = data.lots.map(lot => `
+                    <div class="lot-item">
+                        <div>
+                            <div class="lot-reason">${lot.reason}</div>
+                            <div class="lot-expires">Сгорят: ${lot.expires_at}</div>
                         </div>
-                    `;
-                }).join('');
+                        <div class="lot-amount">${formatMoney(lot.remaining)}</div>
+                    </div>
+                `).join('');
             } else {
                 lotsHtml = '<div class="empty-state">Пока нет активных бонусов</div>';
             }
@@ -334,7 +142,7 @@
                     <div class="avatar">${avatarLetter}</div>
                     <div>
                         <div class="user-name">${fullName}</div>
-                        <div class="user-platform">${displayData.platform} • v${displayData.version}</div>
+                        <div class="user-platform">${displayData.platform} • MAX ID: ${displayData.max_user_id}</div>
                     </div>
                 </div>
 
@@ -347,7 +155,7 @@
                 <div class="my-id-card">
                     <div class="my-id-label">МОЙ ID ДЛЯ МАСТЕРА</div>
                     <div class="my-id-value">${formatId(data.referral_code)}</div>
-                    <div class="my-id-hint">Покажите этот ID мастеру для списания бонусов</div>
+                    <div class="my-id-hint">Покажите мастеру для списания бонусов</div>
                 </div>
 
                 <div class="lots-section">
@@ -356,8 +164,8 @@
                 </div>
 
                 <div style="text-align:center; margin-top:20px; color:#94a3b8; font-size:12px;">
-                    Мастер: ${data.master.full_name}<br>
-                    ИНН: ${data.master.inn} • ${data.master.workshop}
+                    Мастер: ${data.master.full_name || '—'}<br>
+                    ИНН: ${data.master.inn || '—'} • ${data.master.workshop || '—'}
                 </div>
             `;
 
@@ -365,7 +173,40 @@
         }
 
         // ============================================================
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // 4. КЛИЕНТ НЕ НАЙДЕН — показываем MAX ID
+        // ============================================================
+        function renderNotFound(displayData) {
+            const html = `
+                <div class="header">
+                    <div class="avatar">?</div>
+                    <div>
+                        <div class="user-name">${displayData.first_name || 'Гость'}</div>
+                        <div class="user-platform">${displayData.platform}</div>
+                    </div>
+                </div>
+
+                <div class="not-found-box">
+                    <h3>🔍 Вас нет в базе мастера</h3>
+                    <p style="color:#92400e; font-size:14px;">
+                        Передайте мастеру ваш MAX ID, чтобы он добавил вас:
+                    </p>
+                    <div class="max-id-big">${displayData.max_user_id}</div>
+                    <p style="color:#92400e; font-size:12px; margin-top:12px;">
+                        После добавления закройте и откройте приложение заново
+                    </p>
+                </div>
+
+                <div style="text-align:center; margin-top:24px;">
+                    <button onclick="location.reload()" style="background:#2563eb; color:white; border:none; padding:14px 28px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;">
+                        🔄 Обновить
+                    </button>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // ============================================================
+        // ВСПОМОГАТЕЛЬНЫЕ
         // ============================================================
         function formatMoney(amount) {
             if (amount === null || amount === undefined) return '0 ₽';
@@ -377,32 +218,22 @@
 
         function formatId(code) {
             if (!code) return '—';
-            // Разбиваем "18216" на "1 8 2 1 6" для крупного отображения
             return String(code).split('').join(' ');
         }
 
         function showError(message) {
             document.getElementById('app').innerHTML = `
-                <div class="error-box">
-                    ❌ ${message}
-                </div>
-                <div style="text-align:center; color:#64748b; font-size:14px; margin-top:20px;">
-                    Откройте это Mini App через чат-бота в MAX,<br>
-                    чтобы увидеть свой кошелёк.
+                <div class="error-box">❌ ${message}</div>
+                <div style="text-align:center; margin-top:16px;">
+                    <button onclick="location.reload()" style="background:#2563eb; color:white; border:none; padding:12px 24px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">
+                        🔄 Попробовать снова
+                    </button>
                 </div>
             `;
         }
 
-        // ============================================================
-        // ЗАПУСК
-        // ============================================================
-        // Запускаем после полной загрузки страницы
         window.addEventListener('load', initMaxApp);
-
-        // Подстраховка: если load уже прошёл — запускаем сразу
-        if (document.readyState === 'complete') {
-            initMaxApp();
-        }
+        if (document.readyState === 'complete') initMaxApp();
     </script>
 </body>
-</html>ы
+</html>
