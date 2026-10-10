@@ -2,18 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FixBonus — Панель мастера</title>
-    <script src="https://st.max.ru/js/max-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #f4f6f8; color: #1a1a2e; padding: 16px; min-height: 100vh; padding-bottom: 90px; }
+        body { background: #f4f6f8; color: #1a1a2e; padding: 16px; }
         .header { margin-bottom: 20px; }
         .workshop { font-size: 22px; font-weight: 700; }
         .master-name { font-size: 13px; color: #64748b; margin-top: 4px; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
-        .tab { padding: 10px 18px; border-radius: 20px; background: white; color: #64748b; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 10px 18px; border-radius: 20px; background: white; color: #64748b; font-size: 14px; font-weight: 500; border: none; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
         .tab.active { background: #2563eb; color: white; }
+        .btn-new { padding: 10px 18px; border-radius: 20px; background: #10b981; color: white; font-size: 14px; font-weight: 500; border: none; cursor: pointer; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
         .stat-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .stat-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
@@ -21,11 +21,8 @@
         .stat-value.green { color: #10b981; }
         .stat-value.blue { color: #2563eb; }
         .stat-value.orange { color: #f59e0b; }
-        .stat-value.red { color: #ef4444; }
         .section { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-        .list-item { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .list-item:last-child { border-bottom: none; }
         .item-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
         .item-sub { font-size: 12px; color: #94a3b8; }
         .item-row { display: flex; justify-content: space-between; align-items: center; }
@@ -34,220 +31,278 @@
         .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
         .badge.closed { background: #d1fae5; color: #065f46; }
         .badge.work { background: #fef3c7; color: #92400e; }
+        .btn-close { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-close:hover { background: #1e40af; }
         .loader { text-align: center; padding: 40px; color: #64748b; }
-        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; }
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; margin-bottom: 12px; }
         .empty { text-align: center; padding: 24px; color: #94a3b8; font-size: 14px; }
+        /* Modal */
+        .modal-bg { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+        .modal-bg.active { display: flex; }
+        .modal { background: white; border-radius: 20px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal h3 { font-size: 20px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 13px; color: #64748b; margin-bottom: 6px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 15px; font-family: inherit; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #2563eb; }
+        .info-block { background: #f8fafc; border-radius: 12px; padding: 14px; margin-bottom: 14px; font-size: 14px; }
+        .info-block b { color: #2563eb; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .btn-cancel { background: #f1f5f9; color: #64748b; }
+        .btn-submit { background: #2563eb; color: white; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="loader">⏳ Загружаем данные мастера...</div>
+    <div id="app"><div class="loader">⏳ Загрузка...</div></div>
+
+    <!-- Модальное окно закрытия заявки -->
+    <div class="modal-bg" id="closeModal">
+        <div class="modal">
+            <h3>🔒 Закрыть заявку</h3>
+            <div id="closeModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания заявки -->
+    <div class="modal-bg" id="createModal">
+        <div class="modal">
+            <h3>➕ Новая заявка</h3>
+            <div class="form-group">
+                <label>ID клиента (5 цифр)</label>
+                <input type="text" id="newClientCode" placeholder="Например, 66577" maxlength="5">
+            </div>
+            <div class="form-group">
+                <label>Устройство</label>
+                <input type="text" id="newDevice" placeholder="iPhone 12 Pro">
+            </div>
+            <div class="form-group">
+                <label>Что делаем</label>
+                <textarea id="newWorks" rows="2" placeholder="Замена дисплея, чистка"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Сумма с клиента, ₽</label>
+                <input type="number" id="newAmount" placeholder="6500">
+            </div>
+            <div class="form-group">
+                <label>Расход на запчасти, ₽</label>
+                <input type="number" id="newParts" placeholder="1500" value="0">
+            </div>
+            <div class="form-group">
+                <label>Гарантия, дней</label>
+                <input type="number" id="newWarranty" placeholder="180" value="180">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+                <button class="btn-submit" id="createBtn" onclick="submitCreate()">Создать</button>
+            </div>
+        </div>
     </div>
 
     <script>
         const CONFIG = {
             API_URL: 'https://141.133.206.43.nip.io',
-            MASTER_MAX_ID: 100000001  // тестовый ID мастера
+            MASTER_MAX_ID: 100000001
         };
-
         let currentTab = 'dashboard';
-        let cachedData = {};
 
-        // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ
-        // ============================================================
-        function init() {
-            if (typeof window.WebApp !== 'undefined') {
-                window.WebApp.ready();
-                // В будущем можно взять реальный MAX ID мастера
-            }
-            renderTabs();
-            loadTab('dashboard');
-        }
+        function init() { renderTabs(); loadTab('dashboard'); }
 
         function renderTabs() {
-            const html = `
-                <div class="tabs">
-                    <button class="tab ${currentTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">📊 Дашборд</button>
-                    <button class="tab ${currentTab === 'orders' ? 'active' : ''}" onclick="switchTab('orders')">📋 Заявки</button>
-                    <button class="tab ${currentTab === 'clients' ? 'active' : ''}" onclick="switchTab('clients')">👥 Клиенты</button>
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="workshop">🔧 FixPhone</div>
+                    <div class="master-name">Панель мастера</div>
                 </div>
+                <div class="tabs">
+                    <button class="tab ${currentTab==='dashboard'?'active':''}" onclick="switchTab('dashboard')">📊 Дашборд</button>
+                    <button class="tab ${currentTab==='orders'?'active':''}" onclick="switchTab('orders')">📋 Заявки</button>
+                    <button class="tab ${currentTab==='clients'?'active':''}" onclick="switchTab('clients')">👥 Клиенты</button>
+                    <button class="btn-new" onclick="openCreateModal()">+ Новая заявка</button>
+                </div>
+                <div id="content"><div class="loader">⏳ Загрузка...</div></div>
             `;
-            return html;
         }
 
-        function switchTab(tab) {
-            currentTab = tab;
-            loadTab(tab);
-        }
+        function switchTab(tab) { currentTab = tab; renderTabs(); loadTab(tab); }
 
         async function loadTab(tab) {
-            document.getElementById('app').innerHTML = renderTabs() + '<div class="loader">⏳ Загружаем...</div>';
-
             try {
                 let url;
                 if (tab === 'dashboard') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/dashboard`;
                 if (tab === 'orders') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders`;
                 if (tab === 'clients') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients`;
-
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-
-                cachedData[tab] = data;
-
+                const r = await fetch(url);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const data = await r.json();
                 if (tab === 'dashboard') renderDashboard(data);
                 if (tab === 'orders') renderOrders(data);
                 if (tab === 'clients') renderClients(data);
-
             } catch (err) {
-                document.getElementById('app').innerHTML = renderTabs() + `<div class="error-box">❌ ${err.message}</div>`;
+                document.getElementById('content').innerHTML = `<div class="error-box">❌ ${err.message}</div>`;
             }
         }
 
-        // ============================================================
-        // ДАШБОРД
-        // ============================================================
         function renderDashboard(data) {
-            const s = data.stats;
-            const m = data.master;
-
-            const ordersHtml = data.recent_orders.map(o => `
-                <div class="list-item">
+            const s = data.stats, m = data.master;
+            const orders = data.recent_orders.map(o => `
+                <div style="padding:12px 0; border-bottom:1px solid #f1f5f9;">
                     <div class="item-row">
-                        <div>
-                            <div class="item-title">№${o.id} — ${o.device}</div>
-                            <div class="item-sub">${o.client_name} • ${o.date || ''}</div>
-                        </div>
+                        <div><div class="item-title">№${o.id} — ${o.device}</div><div class="item-sub">${o.client_name} • ${o.date||''}</div></div>
                         <div class="item-amount">${fmt(o.final)}</div>
                     </div>
-                </div>
-            `).join('');
-
-            const html = `
-                <div class="header">
-                    <div class="workshop">🔧 ${m.workshop}</div>
-                    <div class="master-name">${m.full_name} • ИНН ${m.inn}</div>
-                </div>
-
+                </div>`).join('');
+            document.getElementById('content').innerHTML = `
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">💵 Выручка</div>
-                        <div class="stat-value blue">${fmt(s.revenue)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">✅ Чистыми</div>
-                        <div class="stat-value green">${fmt(s.net_profit)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">📦 Запчасти</div>
-                        <div class="stat-value orange">${fmt(s.parts)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">🎁 Скидка</div>
-                        <div class="stat-value orange">${fmt(s.discount)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">📊 Заявок</div>
-                        <div class="stat-value">${s.orders_count}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">👥 Клиентов</div>
-                        <div class="stat-value">${s.clients_count}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">📈 Ср. чек</div>
-                        <div class="stat-value">${fmt(s.avg_check)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">💎 На руки</div>
-                        <div class="stat-value green">${fmt(s.net_after_tax)}</div>
-                    </div>
+                    <div class="stat-card"><div class="stat-label">💵 Выручка</div><div class="stat-value blue">${fmt(s.revenue)}</div></div>
+                    <div class="stat-card"><div class="stat-label">✅ Чистыми</div><div class="stat-value green">${fmt(s.net_profit)}</div></div>
+                    <div class="stat-card"><div class="stat-label">📦 Запчасти</div><div class="stat-value orange">${fmt(s.parts)}</div></div>
+                    <div class="stat-card"><div class="stat-label">🎁 Скидка</div><div class="stat-value orange">${fmt(s.discount)}</div></div>
+                    <div class="stat-card"><div class="stat-label">📊 Заявок</div><div class="stat-value">${s.orders_count}</div></div>
+                    <div class="stat-card"><div class="stat-label">👥 Клиентов</div><div class="stat-value">${s.clients_count}</div></div>
+                    <div class="stat-card"><div class="stat-label">📈 Ср. чек</div><div class="stat-value">${fmt(s.avg_check)}</div></div>
+                    <div class="stat-card"><div class="stat-label">💎 На руки</div><div class="stat-value green">${fmt(s.net_after_tax)}</div></div>
                 </div>
-
-                <div class="section">
-                    <div class="section-title">🕐 Последние заявки</div>
-                    ${ordersHtml || '<div class="empty">Пока нет заявок</div>'}
-                </div>
-            `;
-            document.getElementById('app').innerHTML = renderTabs() + html;
+                <div class="section"><div class="section-title">🕐 Последние заявки</div>${orders||'<div class="empty">Пока нет заявок</div>'}</div>`;
         }
 
-        // ============================================================
-        // ЗАЯВКИ
-        // ============================================================
         function renderOrders(data) {
-            const orders = data.orders.map(o => `
-                <div class="section">
+            const html = data.orders.map(o => {
+                const isWork = o.status !== 'closed';
+                return `<div class="section">
                     <div class="item-row">
-                        <div>
-                            <div class="item-title">№${o.id} — ${o.device}</div>
-                            <div class="item-sub">${o.client_name} (ID ${o.client_code}) • ${o.created_at || ''}</div>
-                        </div>
-                        <span class="badge ${o.status === 'closed' ? 'closed' : 'work'}">${o.status === 'closed' ? 'Закрыт' : o.status}</span>
+                        <div><div class="item-title">№${o.id} — ${o.device}</div><div class="item-sub">${o.client_name} (ID ${o.client_code}) • ${o.created_at||''}</div></div>
+                        <span class="badge ${isWork?'work':'closed'}">${isWork?'В работе':'Закрыт'}</span>
                     </div>
-                    <div style="margin-top:8px; font-size:13px; color:#64748b;">${o.works || ''}</div>
+                    <div style="margin-top:8px; font-size:13px; color:#64748b;">${o.works||''}</div>
                     <div class="item-row" style="margin-top:8px;">
                         <div class="item-sub">К оплате: <b>${fmt(o.final)}</b></div>
                         <div class="item-amount">Чистыми ${fmt(o.net)}</div>
                     </div>
-                    ${o.warranty_until ? `<div class="item-sub" style="margin-top:6px;">🛡 Гарантия до ${o.warranty_until}</div>` : ''}
-                </div>
-            `).join('');
-
-            const html = `
-                <div class="header">
-                    <div class="workshop">📋 Заявки</div>
-                    <div class="master-name">Всего: ${data.orders.length}</div>
-                </div>
-                ${orders || '<div class="empty">Пока нет заявок</div>'}
-            `;
-            document.getElementById('app').innerHTML = renderTabs() + html;
+                    ${o.warranty_until?`<div class="item-sub" style="margin-top:6px;">🛡 Гарантия до ${o.warranty_until}</div>`:''}
+                    ${isWork?`<button class="btn-close" style="margin-top:10px;" onclick='openCloseModal(${JSON.stringify(o)})'>🔒 Закрыть заявку</button>`:''}
+                </div>`;
+            }).join('');
+            document.getElementById('content').innerHTML = `${html||'<div class="empty">Пока нет заявок</div>'}`;
         }
 
-        // ============================================================
-        // КЛИЕНТЫ
-        // ============================================================
         function renderClients(data) {
-            const clients = data.clients.map(c => `
+            const html = data.clients.map(c => `
                 <div class="section">
                     <div class="item-row">
                         <div>
                             <div class="item-title">👤 ${c.name}</div>
-                            <div class="item-sub">ID для бонусов: <b>${c.referral_code || '—'}</b></div>
-                            <div class="item-sub">📞 ${c.phone || '—'}</div>
+                            <div class="item-sub">ID: <b>${c.referral_code||'—'}</b> • 📞 ${c.phone||'—'}</div>
                         </div>
                         <div style="text-align:right;">
                             <div class="item-amount orange">${fmt(c.bonus_balance)}</div>
                             <div class="item-sub">бонусов</div>
                         </div>
                     </div>
-                    <div class="item-sub" style="margin-top:8px;">
-                        ${c.orders_count} ремонтов • всего ${fmt(c.total_paid)}
-                    </div>
-                </div>
-            `).join('');
+                    <div class="item-sub" style="margin-top:8px;">${c.orders_count} ремонтов • всего ${fmt(c.total_paid)}</div>
+                </div>`).join('');
+            document.getElementById('content').innerHTML = html||'<div class="empty">Пока нет клиентов</div>';
+        }
 
-            const html = `
-                <div class="header">
-                    <div class="workshop">👥 Клиенты</div>
-                    <div class="master-name">Всего: ${data.clients.length}</div>
+        // === МОДАЛЬНОЕ ОКНО ЗАКРЫТИЯ ===
+        async function openCloseModal(order) {
+            const r = await fetch(`${CONFIG.API_URL}/api/client/${order.client_code}`);
+            // Получаем данные клиента через другой эндпоинт
+            const r2 = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients`);
+            const clients = await r2.json();
+            const client = clients.clients.find(c => c.referral_code === String(order.client_code));
+
+            document.getElementById('closeModalBody').innerHTML = `
+                <div class="info-block">
+                    <div><b>Заявка №${order.id}</b> — ${order.device}</div>
+                    <div style="margin-top:6px;">Клиент: <b>${order.client_name}</b> (ID ${order.client_code})</div>
+                    <div style="margin-top:6px;">Баланс клиента: <b>${fmt(client?.bonus_balance||0)}</b></div>
+                    <div style="margin-top:6px;">Сумма чека: <b>${fmt(order.amount)}</b></div>
+                    <div style="margin-top:6px; color:#64748b; font-size:12px;">Максимум списания: 30% = ${fmt(order.amount*0.3)}</div>
                 </div>
-                ${clients || '<div class="empty">Пока нет клиентов</div>'}
+                <div class="form-group">
+                    <label>Списать бонусов с клиента, ₽</label>
+                    <input type="number" id="closeBonusSpend" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>ID дарителя (опционально, 5 цифр)</label>
+                    <input type="text" id="closeGiverCode" placeholder="Если кто-то дарит свои бонусы" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Списать с дарителя, ₽</label>
+                    <input type="number" id="closeGiverBonus" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>% начисления бонусов</label>
+                    <input type="number" id="closeBonusRate" value="25" min="0" max="100">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeCloseModal()">Отмена</button>
+                    <button class="btn-submit" onclick="submitClose(${order.id})">🔒 Закрыть заявку</button>
+                </div>
             `;
-            document.getElementById('app').innerHTML = renderTabs() + html;
+            document.getElementById('closeModal').classList.add('active');
         }
 
-        // ============================================================
-        // УТИЛИТЫ
-        // ============================================================
-        function fmt(amount) {
-            if (amount === null || amount === undefined) return '0 ₽';
-            return Number(amount).toLocaleString('ru-RU', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }) + ' ₽';
+        function closeCloseModal() {
+            document.getElementById('closeModal').classList.remove('active');
         }
+
+        async function submitClose(orderId) {
+            const payload = {
+                client_bonus_to_spend: parseFloat(document.getElementById('closeBonusSpend').value) || 0,
+                giver_referral_code: document.getElementById('closeGiverCode').value.trim() || null,
+                giver_bonus_to_spend: parseFloat(document.getElementById('closeGiverBonus').value) || 0,
+                bonus_rate: parseFloat(document.getElementById('closeBonusRate').value) || 25
+            };
+            try {
+                const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders/${orderId}/close`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
+                alert(`✅ Заявка закрыта!\n\nК оплате: ${fmt(data.final_amount)}\nНачислено клиенту: ${fmt(data.bonus_earned_client)}\nНачислено дарителю: ${fmt(data.bonus_earned_giver)}`);
+                closeCloseModal();
+                switchTab('orders');
+            } catch (err) {
+                alert('❌ ' + err.message);
+            }
+        }
+
+        // === МОДАЛЬНОЕ ОКНО СОЗДАНИЯ ===
+        function openCreateModal() { document.getElementById('createModal').classList.add('active'); }
+        function closeCreateModal() { document.getElementById('createModal').classList.remove('active'); }
+
+        async function submitCreate() {
+            const payload = {
+                client_referral_code: document.getElementById('newClientCode').value.trim(),
+                device_model: document.getElementById('newDevice').value.trim(),
+                works_description: document.getElementById('newWorks').value.trim(),
+                client_amount: parseFloat(document.getElementById('newAmount').value) || 0,
+                parts_cost: parseFloat(document.getElementById('newParts').value) || 0,
+                ads_cost: 0,
+                warranty_days: parseInt(document.getElementById('newWarranty').value) || 0
+            };
+            if (!payload.client_referral_code || !payload.client_amount) {
+                alert('Заполните ID клиента и сумму');
+                return;
+            }
+            try {
+                const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders/create`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
+                alert(`✅ Заявка №${data.order_id} создана!`);
+                closeCreateModal();
+                switchTab('orders');
+            } catch (err) {
+                alert('❌ ' + err.message);
+            }
+        }
+
+        function fmt(v) { return Number(v||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₽'; }
 
         window.addEventListener('load', init);
         if (document.readyState === 'complete') init();
