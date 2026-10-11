@@ -61,51 +61,41 @@
         .client-selected-name { font-size: 15px; font-weight: 600; color: #1e40af; }
         .client-selected-info { font-size: 13px; color: #3b82f6; margin-top: 4px; }
         .client-selected-change { font-size: 12px; color: #2563eb; cursor: pointer; text-decoration: underline; margin-top: 6px; display: inline-block; }
+        /* Блок подарка */
+        .gift-block { background: linear-gradient(135deg,#10b981,#059669); color: white; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .gift-block h4 { font-size: 15px; margin-bottom: 8px; }
+        .gift-block .amount { font-size: 24px; font-weight: 700; margin: 6px 0; }
+        .gift-block .from { font-size: 12px; opacity: 0.9; }
+        .gift-check { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; margin-top: 10px; cursor: pointer; }
+        .gift-check input { width: 20px; height: 20px; cursor: pointer; }
+        .gift-check label { font-size: 14px; font-weight: 600; cursor: pointer; }
+        .gift-hint { font-size: 11px; opacity: 0.85; margin-top: 6px; }
     </style>
 </head>
 <body>
     <div id="app"><div class="loader">⏳ Загрузка...</div></div>
 
-    <!-- Модалка закрытия заявки -->
     <div class="modal-bg" id="closeModal"><div class="modal"><h3>🔒 Закрыть заявку</h3><div id="closeModalBody"></div></div></div>
 
-    <!-- Модалка создания заявки -->
     <div class="modal-bg" id="createModal">
         <div class="modal">
             <h3>➕ Новая заявка</h3>
-
             <div class="form-group">
                 <label>Клиент (начните вводить имя, телефон или ID)</label>
                 <div class="client-search">
-                    <input type="text" id="clientQuery" placeholder="Например: Максим, +7999..., 66577" autocomplete="off">
+                    <input type="text" id="clientQuery" placeholder="Например: Олеся, +7999..., 55348" autocomplete="off">
                     <div class="client-results" id="clientResults"></div>
                 </div>
                 <div id="selectedClient"></div>
             </div>
-
-            <div class="form-group">
-                <label>Устройство</label>
-                <input type="text" id="newDevice" placeholder="iPhone 12 Pro">
-            </div>
-            <div class="form-group">
-                <label>Что делаем</label>
-                <textarea id="newWorks" rows="2" placeholder="Замена дисплея, чистка"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Сумма с клиента, ₽</label>
-                <input type="number" id="newAmount" placeholder="6500">
-            </div>
-            <div class="form-group">
-                <label>Расход на запчасти, ₽</label>
-                <input type="number" id="newParts" placeholder="0" value="0">
-            </div>
-            <div class="form-group">
-                <label>Гарантия, дней</label>
-                <input type="number" id="newWarranty" placeholder="180" value="180">
-            </div>
+            <div class="form-group"><label>Устройство</label><input type="text" id="newDevice" placeholder="iPhone 12 Pro"></div>
+            <div class="form-group"><label>Что делаем</label><textarea id="newWorks" rows="2" placeholder="Замена дисплея, чистка"></textarea></div>
+            <div class="form-group"><label>Сумма с клиента, ₽</label><input type="number" id="newAmount" placeholder="6500"></div>
+            <div class="form-group"><label>Расход на запчасти, ₽</label><input type="number" id="newParts" placeholder="0" value="0"></div>
+            <div class="form-group"><label>Гарантия, дней</label><input type="number" id="newWarranty" placeholder="180" value="180"></div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
-                <button class="btn-submit" id="createBtn" onclick="submitCreate()">Создать</button>
+                <button class="btn-submit" onclick="submitCreate()">Создать</button>
             </div>
         </div>
     </div>
@@ -221,75 +211,27 @@
             document.getElementById('content').innerHTML = `
                 <div class="section">
                     <div class="section-title">⚙️ Настройки бонусной программы</div>
-
-                    <div class="form-group">
-                        <label>% начисления за ремонт — диапазон (мин / макс)</label>
+                    <div class="form-group"><label>% начисления за ремонт — диапазон (мин / макс)</label>
                         <div style="display:flex; gap:10px;">
                             <input type="number" id="s_rate_min" value="${s.bonus_rate_min}" min="0" max="100">
                             <input type="number" id="s_rate_max" value="${s.bonus_rate_max}" min="0" max="100">
                         </div>
                     </div>
-
-                    <div class="form-group">
-                        <label>% начисления по умолчанию</label>
-                        <input type="number" id="s_rate_def" value="${s.bonus_rate_default}" min="0" max="100">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Максимум списания бонусами от чека, %</label>
-                        <input type="number" id="s_max_spend" value="${s.bonus_max_spend_percent}" min="0" max="100">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Срок жизни бонусов, месяцев</label>
-                        <input type="number" id="s_lifetime" value="${s.bonus_lifetime_months}" min="1" max="60">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Бонус на день рождения, ₽</label>
-                        <input type="number" id="s_bday" value="${s.birthday_bonus}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Бонус за отзыв с фото, ₽</label>
-                        <input type="number" id="s_review" value="${s.review_bonus}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Бонус за заполнение профиля, ₽</label>
-                        <input type="number" id="s_profile" value="${s.profile_bonus}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Доля дарителю при реферале, %</label>
-                        <input type="number" id="s_ref" value="${s.referral_split_percent}" min="0" max="100">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Налог, %</label>
-                        <input type="number" id="s_tax" value="${s.tax_rate}" min="0" max="30">
-                    </div>
-
+                    <div class="form-group"><label>% начисления по умолчанию</label><input type="number" id="s_rate_def" value="${s.bonus_rate_default}" min="0" max="100"></div>
+                    <div class="form-group"><label>Максимум списания бонусами от чека, % (не более 30)</label><input type="number" id="s_max_spend" value="${s.bonus_max_spend_percent}" min="0" max="30"></div>
+                    <div class="form-group"><label>Срок жизни бонусов, месяцев</label><input type="number" id="s_lifetime" value="${s.bonus_lifetime_months}" min="1" max="60"></div>
+                    <div class="form-group"><label>Бонус на день рождения, ₽</label><input type="number" id="s_bday" value="${s.birthday_bonus}"></div>
+                    <div class="form-group"><label>Бонус за отзыв с фото, ₽</label><input type="number" id="s_review" value="${s.review_bonus}"></div>
+                    <div class="form-group"><label>Бонус за заполнение профиля, ₽</label><input type="number" id="s_profile" value="${s.profile_bonus}"></div>
+                    <div class="form-group"><label>Доля дарителю при реферале, %</label><input type="number" id="s_ref" value="${s.referral_split_percent}" min="0" max="100"></div>
+                    <div class="form-group"><label>Налог, %</label><input type="number" id="s_tax" value="${s.tax_rate}" min="0" max="30"></div>
                     <div class="form-group" style="display:flex; gap:20px; flex-wrap:wrap;">
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                            <input type="checkbox" id="s_enable_ref" ${s.enable_referral?'checked':''} style="width:auto;">
-                            Реферальная программа
-                        </label>
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                            <input type="checkbox" id="s_enable_gifts" ${s.enable_gifts?'checked':''} style="width:auto;">
-                            Подарки бонусов
-                        </label>
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                            <input type="checkbox" id="s_enable_exp" ${s.enable_expiration?'checked':''} style="width:auto;">
-                            Сгорание бонусов
-                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="s_enable_ref" ${s.enable_referral?'checked':''} style="width:auto;"> Реферальная программа</label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="s_enable_gifts" ${s.enable_gifts?'checked':''} style="width:auto;"> Подарки бонусов</label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" id="s_enable_exp" ${s.enable_expiration?'checked':''} style="width:auto;"> Сгорание бонусов</label>
                     </div>
-
-                    <div class="modal-actions" style="margin-top:20px;">
-                        <button class="btn-submit" onclick="saveSettings()" style="padding:14px;">💾 Сохранить настройки</button>
-                    </div>
-                </div>
-            `;
+                    <div class="modal-actions" style="margin-top:20px;"><button class="btn-submit" onclick="saveSettings()">💾 Сохранить настройки</button></div>
+                </div>`;
         }
 
         async function saveSettings() {
@@ -297,7 +239,7 @@
                 bonus_rate_min: parseFloat(document.getElementById('s_rate_min').value)||10,
                 bonus_rate_max: parseFloat(document.getElementById('s_rate_max').value)||30,
                 bonus_rate_default: parseFloat(document.getElementById('s_rate_def').value)||25,
-                bonus_max_spend_percent: parseFloat(document.getElementById('s_max_spend').value)||30,
+                bonus_max_spend_percent: Math.min(parseFloat(document.getElementById('s_max_spend').value)||30, 30),
                 bonus_lifetime_months: parseInt(document.getElementById('s_lifetime').value)||12,
                 birthday_bonus: parseFloat(document.getElementById('s_bday').value)||1000,
                 review_bonus: parseFloat(document.getElementById('s_review').value)||300,
@@ -317,7 +259,6 @@
             } catch (err) { alert('❌ ' + err.message); }
         }
 
-        // === ПОИСК КЛИЕНТА ===
         document.addEventListener('input', function(e) {
             if (e.target && e.target.id === 'clientQuery') {
                 clearTimeout(searchTimeout);
@@ -356,15 +297,40 @@
                 </div>`;
         }
 
-        function clearClient() {
-            selectedClient = null;
-            document.getElementById('selectedClient').innerHTML = '';
-        }
+        function clearClient() { selectedClient = null; document.getElementById('selectedClient').innerHTML = ''; }
 
-        // === МОДАЛКА ЗАКРЫТИЯ ===
+        // === ЗАКРЫТИЕ ЗАЯВКИ С АВТО-ПОДАРКОМ ===
         async function openCloseModal(order) {
-            const r2 = await fetch(`${CONFIG.API_URL}/api/client/by-code/${order.client_code}`);
-            const client = r2.ok ? await r2.json() : { bonus_balance: 0 };
+            document.getElementById('closeModalBody').innerHTML = '<div class="loader">⏳ Загрузка...</div>';
+            document.getElementById('closeModal').classList.add('active');
+
+            // Получаем данные клиента и активный подарок
+            let client = { bonus_balance: 0 };
+            let gift = null;
+            try {
+                const r = await fetch(`${CONFIG.API_URL}/api/client/by-code/${order.client_code}/active-gift`);
+                if (r.ok) {
+                    const data = await r.json();
+                    client = data.client || client;
+                    gift = data.gift || null;
+                }
+            } catch (e) { console.warn(e); }
+
+            const maxSpend = Math.round(order.amount * 0.30);
+
+            const giftHtml = gift ? `
+                <div class="gift-block">
+                    <h4>🎁 У клиента есть подарок</h4>
+                    <div class="amount">${fmt(gift.amount)}</div>
+                    <div class="from">От: <b>${gift.giver_name}</b> (ID ${gift.giver_code})</div>
+                    <div class="from gift-hint">Подарок был принят ${gift.created_at || ''}</div>
+                    <div class="gift-check">
+                        <input type="checkbox" id="applyGift" checked>
+                        <label for="applyGift">Применить подарок к этому ремонту</label>
+                    </div>
+                    <div class="gift-hint">Если сумма превышает лимит списания — она автоматически уменьшится</div>
+                </div>
+            ` : '';
 
             document.getElementById('closeModalBody').innerHTML = `
                 <div class="info-block">
@@ -372,18 +338,12 @@
                     <div style="margin-top:6px;">Клиент: <b>${order.client_name}</b> (ID ${order.client_code})</div>
                     <div style="margin-top:6px;">Баланс клиента: <b>${fmt(client.bonus_balance)}</b></div>
                     <div style="margin-top:6px;">Сумма чека: <b>${fmt(order.amount)}</b></div>
+                    <div style="margin-top:6px; color:#64748b; font-size:12px;">Максимум списания: 30% = ${fmt(maxSpend)}</div>
                 </div>
+                ${giftHtml}
                 <div class="form-group">
                     <label>Списать бонусов с клиента, ₽</label>
                     <input type="number" id="closeBonusSpend" value="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label>ID дарителя (опционально, 5 цифр)</label>
-                    <input type="text" id="closeGiverCode" placeholder="Если кто-то дарит свои бонусы" maxlength="5">
-                </div>
-                <div class="form-group">
-                    <label>Списать с дарителя, ₽</label>
-                    <input type="number" id="closeGiverBonus" value="0" min="0">
                 </div>
                 <div class="form-group">
                     <label>% начисления бонусов (по умолчанию — из настроек)</label>
@@ -394,17 +354,38 @@
                     <button class="btn-submit" onclick="submitClose(${order.id})">🔒 Закрыть заявку</button>
                 </div>
             `;
-            document.getElementById('closeModal').classList.add('active');
         }
 
         function closeCloseModal() { document.getElementById('closeModal').classList.remove('active'); }
 
         async function submitClose(orderId) {
             const rateVal = document.getElementById('closeBonusRate').value.trim();
+            const clientSpend = parseFloat(document.getElementById('closeBonusSpend').value) || 0;
+
+            let giverCode = null;
+            let giverSpend = 0;
+
+            // Если есть галочка "применить подарок"
+            const giftCheckbox = document.getElementById('applyGift');
+            if (giftCheckbox && giftCheckbox.checked) {
+                // Получаем данные подарка снова (проще — из DOM)
+                const giftBlock = document.querySelector('.gift-block');
+                if (giftBlock) {
+                    // Вытаскиваем код дарителя из текста (ID xxx)
+                    const match = giftBlock.textContent.match(/ID (\d+)/);
+                    if (match) giverCode = match[1];
+                    // Сумма подарка — из заголовка `.amount`
+                    const amountEl = giftBlock.querySelector('.amount');
+                    if (amountEl) {
+                        giverSpend = parseFloat(amountEl.textContent.replace(/[^\d]/g, '')) || 0;
+                    }
+                }
+            }
+
             const payload = {
-                client_bonus_to_spend: parseFloat(document.getElementById('closeBonusSpend').value) || 0,
-                giver_referral_code: document.getElementById('closeGiverCode').value.trim() || null,
-                giver_bonus_to_spend: parseFloat(document.getElementById('closeGiverBonus').value) || 0,
+                client_bonus_to_spend: clientSpend,
+                giver_referral_code: giverCode,
+                giver_bonus_to_spend: giverSpend,
                 bonus_rate: rateVal ? parseFloat(rateVal) : null
             };
             try {
@@ -419,7 +400,6 @@
             } catch (err) { alert('❌ ' + err.message); }
         }
 
-        // === МОДАЛКА СОЗДАНИЯ ===
         function openCreateModal() {
             selectedClient = null;
             document.getElementById('selectedClient').innerHTML = '';
