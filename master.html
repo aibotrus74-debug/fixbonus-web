@@ -106,13 +106,26 @@
         let selectedClient = null;
         let searchTimeout = null;
 
-        function init() { renderTabs(); loadTab('dashboard'); }
+        function init() { loadMasterInfo(); renderTabs(); loadTab('dashboard'); }
+
+async function loadMasterInfo() {
+    try {
+        const r = await fetch(`${CONFIG.API_URL}/api/user/${CONFIG.MASTER_MAX_ID}/role`);
+        if (r.ok) {
+            const d = await r.json();
+            if (d.role === 'master') {
+                document.getElementById('masterWorkshop').textContent = '🔧 ' + (d.workshop || 'Мастерская');
+                document.getElementById('masterName').textContent = d.name || '';
+            }
+        }
+    } catch (e) { console.warn(e); }
+}
 
         function renderTabs() {
             document.getElementById('app').innerHTML = `
                 <div class="header">
-                    <div class="workshop">🔧 FixPhone</div>
-                    <div class="master-name">Панель мастера</div>
+                    <div class="workshop" id="masterWorkshop">🔧 Загрузка...</div>
+<div class="master-name" id="masterName"></div>
                 </div>
                 <div class="tabs">
                     <button class="tab ${currentTab==='dashboard'?'active':''}" onclick="switchTab('dashboard')">📊 Дашборд</button>
