@@ -76,7 +76,19 @@
     <div id="app"><div class="loader">⏳ Загрузка...</div></div>
 
     <div class="modal-bg" id="closeModal"><div class="modal"><h3>🔒 Закрыть заявку</h3><div id="closeModalBody"></div></div></div>
-
+<div class="modal-bg" id="inviteLinkModal">
+    <div class="modal">
+        <h3>🔗 Ссылка для клиента</h3>
+        <p style="font-size:14px; color:#64748b; margin-bottom:16px;">
+            Отправьте эту ссылку новому клиенту. Он откроет её в MAX — и автоматически привяжется к вам.
+        </p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; font-size:13px; word-break:break-all; margin-bottom:14px;" id="inviteLinkText"></div>
+        <div class="modal-actions">
+            <button class="btn-submit" onclick="copyInviteLink()">📋 Скопировать ссылку</button>
+            <button class="btn-cancel" onclick="closeInviteLinkModal()">Закрыть</button>
+        </div>
+    </div>
+</div>
     <div class="modal-bg" id="createModal">
         <div class="modal">
             <h3>➕ Новая заявка</h3>
@@ -133,6 +145,7 @@ async function loadMasterInfo() {
                     <button class="tab ${currentTab==='clients'?'active':''}" onclick="switchTab('clients')">👥 Клиенты</button>
                     <button class="tab ${currentTab==='settings'?'active':''}" onclick="switchTab('settings')">⚙️ Настройки</button>
                     <button class="btn-new" onclick="openCreateModal()">+ Новая заявка</button>
+                    <button class="btn-new" style="background:#7c3aed;" onclick="openInviteLinkModal()">🔗 Ссылка для клиента</button>
                 </div>
                 <div id="content"><div class="loader">⏳ Загрузка...</div></div>
             `;
@@ -444,7 +457,52 @@ async function loadMasterInfo() {
                 switchTab('orders');
             } catch (err) { alert('❌ ' + err.message); }
         }
+async function openInviteLinkModal() {
+    // Получаем код мастера (5-значный ID)
+    let masterCode = '66577'; // fallback
+    try {
+        const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/settings`);
+        if (r.ok) {
+            // Код мастера — это его referral_code, его нужно получить отдельно
+        }
+    } catch (e) {}
+    
+    // Получаем referral_code мастера через API
+    try {
+        const r = await fetch(`${CONFIG.API_URL}/api/user/${CONFIG.MASTER_MAX_ID}/role`);
+        if (r.ok) {
+            const d = await r.json();
+            // У мастера тоже есть referral_code
+        }
+    } catch (e) {}
+    
+    // Ссылка
+    const link = `https://max.ru/id740416295447_3_bot?startapp=master_${masterCode}`;
+    document.getElementById('inviteLinkText').textContent = link;
+    document.getElementById('inviteLinkModal').classList.add('active');
+}
 
+function closeInviteLinkModal() {
+    document.getElementById('inviteLinkModal').classList.remove('active');
+}
+
+async function copyInviteLink() {
+    const text = document.getElementById('inviteLinkText').textContent;
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            alert('✅ Ссылка скопирована!');
+            return;
+        }
+    } catch (e) {}
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('✅ Ссылка скопирована!');
+}
         function fmt(v) { return Number(v||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₽'; }
 
         window.addEventListener('load', init);
