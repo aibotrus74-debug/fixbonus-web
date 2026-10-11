@@ -113,19 +113,52 @@
                 return;
             }
             window.WebApp.ready();
-            const u = window.WebApp.initDataUnsafe?.user;
-            if (!u) { showError('Не удалось получить MAX ID'); return; }
-            maxUserId = u.id;
 
-            // === ПРИЁМ ПРИГЛАШЕНИЯ (поддерживаем ?invite= и ?startapp=) ===
-            const urlParams = new URLSearchParams(window.location.search);
-            let inviteToken = urlParams.get('invite') || urlParams.get('startapp');
+            // ===== ПРИЁМ ПРИГЛАШЕНИЯ — читаем из всех возможных мест =====
+            let inviteToken = null;
+
+            // 1. Из MAX Bridge (самый главный источник!)
+            try {
+                const maxData = window.WebApp.initDataUnsafe;
+                console.log('📦 initDataUnsafe:', JSON.stringify(maxData));
+                if (maxData) {
+                    // start_param — официальный параметр MAX
+                    if (maxData.start_param) {
+                        inviteToken = maxData.start_param;
+                        console.log('✅ start_param найден:', inviteToken);
+                    }
+                    // startParam — на всякий случай
+                    if (!inviteToken && maxData.startParam) {
+                        inviteToken = maxData.startParam;
+                    }
+                }
+            } catch (e) {
+                console.warn('initDataUnsafe error:', e);
+            }
+
+            // 2. Из URL (fallback)
+            if (!inviteToken) {
+                const urlParams = new URLSearchParams(window.location.search);
+                inviteToken = urlParams.get('invite') || urlParams.get('startapp') || urlParams.get('start_param');
+                if (inviteToken) console.log('✅ Токен из URL:', inviteToken);
+            }
+
+            // Чистим префикс invite_
             if (inviteToken && inviteToken.startsWith('invite_')) {
                 inviteToken = inviteToken.replace('invite_', '');
             }
-            console.log('🔗 Token:', inviteToken);
 
+            console.log('🔗 Финальный токен:', inviteToken);
+
+            // Данные пользователя
+            const u = window.WebApp.initDataUnsafe?.user;
+            if (!u) { showError('Не удалось получить MAX ID'); return; }
+            maxUserId = u.id;
+            console.log('👤 Пользователь:', u.id, u.first_name);
+
+            // Отправляем приглашение на бэкенд
             if (inviteToken) {
+                console.log('📨 Отправляем приглашение на сервер...');
                 try {
                     const r = await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
                         method: 'POST',
@@ -136,24 +169,29 @@
                         })
                     });
                     const data = await r.json();
+                    console.log('📥 Ответ сервера:', r.status, data);
                     if (r.ok) {
                         showToast(`🎁 Вам подарили ${Math.round(data.amount)} ₽ от ${data.giver_name}!`, 'success');
                     }
-                    window.history.replaceState({}, '', window.location.pathname);
-                } catch (e) { console.warn('Ошибка принятия приглашения:', e); }
+                } catch (e) {
+                    console.error('Ошибка принятия приглашения:', e);
+                }
             }
 
+            // Загружаем данные клиента
             try {
                 const r = await fetch(`${API}/api/client/${maxUserId}/full`);
                 if (r.status === 404) { renderNotFound(u); return; }
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 userData = await r.json();
 
+                // Загружаем подарок
                 try {
                     const gr = await fetch(`${API}/api/client/${maxUserId}/pending-gift`);
                     if (gr.ok) {
                         const gd = await gr.json();
                         pendingGift = gd.gift;
+                        console.log('🎁 Подарок:', pendingGift);
                     }
                 } catch (e) { console.warn('gift load:', e); }
 
