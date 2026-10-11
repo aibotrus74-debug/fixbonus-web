@@ -52,12 +52,10 @@
         .quick-btn { flex:1; padding:10px; border-radius:10px; background:#f1f5f9; border:none; font-size:14px; font-weight:600; cursor:pointer; color:#2563eb; }
         .master-card { background:white; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.05); font-size:13px; }
         .master-card b { color:#2563eb; }
-        /* Плашка подарка */
         .gift-banner { background:linear-gradient(135deg,#10b981,#059669); color:white; border-radius:16px; padding:20px; margin-bottom:16px; box-shadow:0 4px 16px rgba(16,185,129,0.3); }
         .gift-banner h3 { font-size:16px; margin-bottom:8px; }
         .gift-banner .amount { font-size:32px; font-weight:700; margin:8px 0; }
         .gift-banner .from { font-size:13px; opacity:0.9; }
-        /* Модальное окно */
         .modal-bg { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:16px; }
         .modal-bg.active { display:flex; }
         .modal { background:white; border-radius:20px; padding:20px; max-width:500px; width:100%; max-height:90vh; overflow-y:auto; }
@@ -68,7 +66,6 @@
         .btn-share { background:#10b981; color:white; }
         .btn-copy { background:#2563eb; color:white; }
         .btn-close { background:#f1f5f9; color:#64748b; }
-        /* Toast */
         .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); padding:14px 20px; border-radius:12px; color:white; font-size:14px; font-weight:500; z-index:1000; box-shadow:0 4px 20px rgba(0,0,0,0.25); max-width:90%; text-align:center; animation:slideDown 0.3s ease; }
         .toast-success { background:#10b981; }
         .toast-error { background:#ef4444; }
@@ -120,10 +117,13 @@
             if (!u) { showError('Не удалось получить MAX ID'); return; }
             maxUserId = u.id;
 
-            // === ПРИЁМ ПРИГЛАШЕНИЯ ===
+            // === ПРИЁМ ПРИГЛАШЕНИЯ (поддерживаем ?invite= и ?startapp=) ===
             const urlParams = new URLSearchParams(window.location.search);
-            const inviteToken = urlParams.get('invite');
-            console.log('🔗 Token в URL:', inviteToken);
+            let inviteToken = urlParams.get('invite') || urlParams.get('startapp');
+            if (inviteToken && inviteToken.startsWith('invite_')) {
+                inviteToken = inviteToken.replace('invite_', '');
+            }
+            console.log('🔗 Token:', inviteToken);
 
             if (inviteToken) {
                 try {
@@ -138,24 +138,17 @@
                     const data = await r.json();
                     if (r.ok) {
                         showToast(`🎁 Вам подарили ${Math.round(data.amount)} ₽ от ${data.giver_name}!`, 'success');
-                    } else if (r.status !== 400) {
-                        console.warn('Приглашение:', data.detail);
                     }
-                    // Очищаем URL, чтобы не срабатывало повторно
                     window.history.replaceState({}, '', window.location.pathname);
-                } catch (e) {
-                    console.warn('Ошибка принятия приглашения:', e);
-                }
+                } catch (e) { console.warn('Ошибка принятия приглашения:', e); }
             }
 
-            // === ЗАГРУЗКА ДАННЫХ ===
             try {
                 const r = await fetch(`${API}/api/client/${maxUserId}/full`);
                 if (r.status === 404) { renderNotFound(u); return; }
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 userData = await r.json();
 
-                // Загружаем подарок (если есть)
                 try {
                     const gr = await fetch(`${API}/api/client/${maxUserId}/pending-gift`);
                     if (gr.ok) {
