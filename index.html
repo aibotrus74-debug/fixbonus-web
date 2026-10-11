@@ -164,6 +164,21 @@
             if (!u) { showError('Не удалось получить MAX ID'); return; }
             maxUserId = u.id;
             console.log('👤 Пользователь:', u.id, u.first_name);
+                        // Определяем, кто зашёл — мастер или клиент
+            try {
+                const roleRes = await fetch(`${API}/api/user/${maxUserId}/role`);
+                if (roleRes.ok) {
+                    const roleData = await roleRes.json();
+                    console.log('👤 Роль:', roleData);
+                    if (roleData.role === 'master') {
+                        // Это мастер — редирект на панель
+                        window.location.href = 'master.html?uid=' + maxUserId;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Ошибка определения роли:', e);
+            }
 
             // Отправляем приглашение на бэкенд
             if (inviteToken) {
