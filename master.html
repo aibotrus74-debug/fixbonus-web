@@ -32,11 +32,9 @@
         .badge.closed { background: #d1fae5; color: #065f46; }
         .badge.work { background: #fef3c7; color: #92400e; }
         .btn-close { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .btn-close:hover { background: #1e40af; }
         .loader { text-align: center; padding: 40px; color: #64748b; }
         .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; margin-bottom: 12px; }
         .empty { text-align: center; padding: 24px; color: #94a3b8; font-size: 14px; }
-        /* Modal */
         .modal-bg { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
         .modal-bg.active { display: flex; }
         .modal { background: white; border-radius: 20px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
@@ -51,28 +49,40 @@
         .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
         .btn-cancel { background: #f1f5f9; color: #64748b; }
         .btn-submit { background: #2563eb; color: white; }
-        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .client-search { position: relative; }
+        .client-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; margin-top: 4px; max-height: 240px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.1); display: none; }
+        .client-results.active { display: block; }
+        .client-result { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .client-result:last-child { border-bottom: none; }
+        .client-result:hover { background: #f8fafc; }
+        .client-result-name { font-size: 14px; font-weight: 500; }
+        .client-result-info { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+        .client-selected { background: #dbeafe; border: 1px solid #93c5fd; border-radius: 10px; padding: 12px; margin-top: 10px; }
+        .client-selected-name { font-size: 15px; font-weight: 600; color: #1e40af; }
+        .client-selected-info { font-size: 13px; color: #3b82f6; margin-top: 4px; }
+        .client-selected-change { font-size: 12px; color: #2563eb; cursor: pointer; text-decoration: underline; margin-top: 6px; display: inline-block; }
     </style>
 </head>
 <body>
     <div id="app"><div class="loader">⏳ Загрузка...</div></div>
 
-    <!-- Модальное окно закрытия заявки -->
-    <div class="modal-bg" id="closeModal">
-        <div class="modal">
-            <h3>🔒 Закрыть заявку</h3>
-            <div id="closeModalBody"></div>
-        </div>
-    </div>
+    <!-- Модалка закрытия заявки -->
+    <div class="modal-bg" id="closeModal"><div class="modal"><h3>🔒 Закрыть заявку</h3><div id="closeModalBody"></div></div></div>
 
-    <!-- Модальное окно создания заявки -->
+    <!-- Модалка создания заявки -->
     <div class="modal-bg" id="createModal">
         <div class="modal">
             <h3>➕ Новая заявка</h3>
+
             <div class="form-group">
-                <label>ID клиента (5 цифр)</label>
-                <input type="text" id="newClientCode" placeholder="Например, 66577" maxlength="5">
+                <label>Клиент (начните вводить имя, телефон или ID)</label>
+                <div class="client-search">
+                    <input type="text" id="clientQuery" placeholder="Например: Максим, +7999..., 66577" autocomplete="off">
+                    <div class="client-results" id="clientResults"></div>
+                </div>
+                <div id="selectedClient"></div>
             </div>
+
             <div class="form-group">
                 <label>Устройство</label>
                 <input type="text" id="newDevice" placeholder="iPhone 12 Pro">
@@ -87,7 +97,7 @@
             </div>
             <div class="form-group">
                 <label>Расход на запчасти, ₽</label>
-                <input type="number" id="newParts" placeholder="1500" value="0">
+                <input type="number" id="newParts" placeholder="0" value="0">
             </div>
             <div class="form-group">
                 <label>Гарантия, дней</label>
@@ -101,11 +111,10 @@
     </div>
 
     <script>
-        const CONFIG = {
-            API_URL: 'https://141.133.206.43.nip.io',
-            MASTER_MAX_ID: 100000001
-        };
+        const CONFIG = { API_URL: 'https://141.133.206.43.nip.io', MASTER_MAX_ID: 100000001 };
         let currentTab = 'dashboard';
+        let selectedClient = null;
+        let searchTimeout = null;
 
         function init() { renderTabs(); loadTab('dashboard'); }
 
@@ -119,6 +128,7 @@
                     <button class="tab ${currentTab==='dashboard'?'active':''}" onclick="switchTab('dashboard')">📊 Дашборд</button>
                     <button class="tab ${currentTab==='orders'?'active':''}" onclick="switchTab('orders')">📋 Заявки</button>
                     <button class="tab ${currentTab==='clients'?'active':''}" onclick="switchTab('clients')">👥 Клиенты</button>
+                    <button class="tab ${currentTab==='settings'?'active':''}" onclick="switchTab('settings')">⚙️ Настройки</button>
                     <button class="btn-new" onclick="openCreateModal()">+ Новая заявка</button>
                 </div>
                 <div id="content"><div class="loader">⏳ Загрузка...</div></div>
@@ -133,19 +143,21 @@
                 if (tab === 'dashboard') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/dashboard`;
                 if (tab === 'orders') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders`;
                 if (tab === 'clients') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients`;
+                if (tab === 'settings') url = `${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/settings`;
                 const r = await fetch(url);
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
                 const data = await r.json();
                 if (tab === 'dashboard') renderDashboard(data);
                 if (tab === 'orders') renderOrders(data);
                 if (tab === 'clients') renderClients(data);
+                if (tab === 'settings') renderSettings(data);
             } catch (err) {
                 document.getElementById('content').innerHTML = `<div class="error-box">❌ ${err.message}</div>`;
             }
         }
 
         function renderDashboard(data) {
-            const s = data.stats, m = data.master;
+            const s = data.stats;
             const orders = data.recent_orders.map(o => `
                 <div style="padding:12px 0; border-bottom:1px solid #f1f5f9;">
                     <div class="item-row">
@@ -184,7 +196,7 @@
                     ${isWork?`<button class="btn-close" style="margin-top:10px;" onclick='openCloseModal(${JSON.stringify(o)})'>🔒 Закрыть заявку</button>`:''}
                 </div>`;
             }).join('');
-            document.getElementById('content').innerHTML = `${html||'<div class="empty">Пока нет заявок</div>'}`;
+            document.getElementById('content').innerHTML = html||'<div class="empty">Пока нет заявок</div>';
         }
 
         function renderClients(data) {
@@ -205,21 +217,161 @@
             document.getElementById('content').innerHTML = html||'<div class="empty">Пока нет клиентов</div>';
         }
 
-        // === МОДАЛЬНОЕ ОКНО ЗАКРЫТИЯ ===
+        function renderSettings(s) {
+            document.getElementById('content').innerHTML = `
+                <div class="section">
+                    <div class="section-title">⚙️ Настройки бонусной программы</div>
+
+                    <div class="form-group">
+                        <label>% начисления за ремонт — диапазон (мин / макс)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="s_rate_min" value="${s.bonus_rate_min}" min="0" max="100">
+                            <input type="number" id="s_rate_max" value="${s.bonus_rate_max}" min="0" max="100">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>% начисления по умолчанию</label>
+                        <input type="number" id="s_rate_def" value="${s.bonus_rate_default}" min="0" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Максимум списания бонусами от чека, %</label>
+                        <input type="number" id="s_max_spend" value="${s.bonus_max_spend_percent}" min="0" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Срок жизни бонусов, месяцев</label>
+                        <input type="number" id="s_lifetime" value="${s.bonus_lifetime_months}" min="1" max="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Бонус на день рождения, ₽</label>
+                        <input type="number" id="s_bday" value="${s.birthday_bonus}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Бонус за отзыв с фото, ₽</label>
+                        <input type="number" id="s_review" value="${s.review_bonus}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Бонус за заполнение профиля, ₽</label>
+                        <input type="number" id="s_profile" value="${s.profile_bonus}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Доля дарителю при реферале, %</label>
+                        <input type="number" id="s_ref" value="${s.referral_split_percent}" min="0" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Налог, %</label>
+                        <input type="number" id="s_tax" value="${s.tax_rate}" min="0" max="30">
+                    </div>
+
+                    <div class="form-group" style="display:flex; gap:20px; flex-wrap:wrap;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" id="s_enable_ref" ${s.enable_referral?'checked':''} style="width:auto;">
+                            Реферальная программа
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" id="s_enable_gifts" ${s.enable_gifts?'checked':''} style="width:auto;">
+                            Подарки бонусов
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" id="s_enable_exp" ${s.enable_expiration?'checked':''} style="width:auto;">
+                            Сгорание бонусов
+                        </label>
+                    </div>
+
+                    <div class="modal-actions" style="margin-top:20px;">
+                        <button class="btn-submit" onclick="saveSettings()" style="padding:14px;">💾 Сохранить настройки</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveSettings() {
+            const payload = {
+                bonus_rate_min: parseFloat(document.getElementById('s_rate_min').value)||10,
+                bonus_rate_max: parseFloat(document.getElementById('s_rate_max').value)||30,
+                bonus_rate_default: parseFloat(document.getElementById('s_rate_def').value)||25,
+                bonus_max_spend_percent: parseFloat(document.getElementById('s_max_spend').value)||30,
+                bonus_lifetime_months: parseInt(document.getElementById('s_lifetime').value)||12,
+                birthday_bonus: parseFloat(document.getElementById('s_bday').value)||1000,
+                review_bonus: parseFloat(document.getElementById('s_review').value)||300,
+                profile_bonus: parseFloat(document.getElementById('s_profile').value)||100,
+                referral_split_percent: parseFloat(document.getElementById('s_ref').value)||50,
+                tax_rate: parseFloat(document.getElementById('s_tax').value)||6,
+                enable_referral: document.getElementById('s_enable_ref').checked,
+                enable_gifts: document.getElementById('s_enable_gifts').checked,
+                enable_expiration: document.getElementById('s_enable_exp').checked
+            };
+            try {
+                const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/settings`, {
+                    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+                });
+                if (!r.ok) throw new Error('Ошибка сохранения');
+                alert('✅ Настройки сохранены!');
+            } catch (err) { alert('❌ ' + err.message); }
+        }
+
+        // === ПОИСК КЛИЕНТА ===
+        document.addEventListener('input', function(e) {
+            if (e.target && e.target.id === 'clientQuery') {
+                clearTimeout(searchTimeout);
+                const q = e.target.value.trim();
+                searchTimeout = setTimeout(() => searchClients(q), 300);
+            }
+        });
+
+        async function searchClients(q) {
+            try {
+                const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients/search?q=${encodeURIComponent(q)}`);
+                const data = await r.json();
+                const box = document.getElementById('clientResults');
+                if (!data.clients || data.clients.length === 0) {
+                    box.innerHTML = '<div class="client-result"><div class="client-result-info">Ничего не найдено</div></div>';
+                } else {
+                    box.innerHTML = data.clients.map(c => `
+                        <div class="client-result" onclick='pickClient(${JSON.stringify(c)})'>
+                            <div class="client-result-name">${c.name}</div>
+                            <div class="client-result-info">ID ${c.referral_code} • ${c.phone||'—'} • ${fmt(c.bonus_balance)}</div>
+                        </div>`).join('');
+                }
+                box.classList.add('active');
+            } catch (err) { console.error(err); }
+        }
+
+        function pickClient(c) {
+            selectedClient = c;
+            document.getElementById('clientQuery').value = '';
+            document.getElementById('clientResults').classList.remove('active');
+            document.getElementById('selectedClient').innerHTML = `
+                <div class="client-selected">
+                    <div class="client-selected-name">👤 ${c.name}</div>
+                    <div class="client-selected-info">ID: ${c.referral_code} • 📞 ${c.phone||'—'} • 💎 ${fmt(c.bonus_balance)}</div>
+                    <span class="client-selected-change" onclick="clearClient()">Изменить</span>
+                </div>`;
+        }
+
+        function clearClient() {
+            selectedClient = null;
+            document.getElementById('selectedClient').innerHTML = '';
+        }
+
+        // === МОДАЛКА ЗАКРЫТИЯ ===
         async function openCloseModal(order) {
-            const r = await fetch(`${CONFIG.API_URL}/api/client/${order.client_code}`);
-            // Получаем данные клиента через другой эндпоинт
-            const r2 = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/clients`);
-            const clients = await r2.json();
-            const client = clients.clients.find(c => c.referral_code === String(order.client_code));
+            const r2 = await fetch(`${CONFIG.API_URL}/api/client/by-code/${order.client_code}`);
+            const client = r2.ok ? await r2.json() : { bonus_balance: 0 };
 
             document.getElementById('closeModalBody').innerHTML = `
                 <div class="info-block">
                     <div><b>Заявка №${order.id}</b> — ${order.device}</div>
                     <div style="margin-top:6px;">Клиент: <b>${order.client_name}</b> (ID ${order.client_code})</div>
-                    <div style="margin-top:6px;">Баланс клиента: <b>${fmt(client?.bonus_balance||0)}</b></div>
+                    <div style="margin-top:6px;">Баланс клиента: <b>${fmt(client.bonus_balance)}</b></div>
                     <div style="margin-top:6px;">Сумма чека: <b>${fmt(order.amount)}</b></div>
-                    <div style="margin-top:6px; color:#64748b; font-size:12px;">Максимум списания: 30% = ${fmt(order.amount*0.3)}</div>
                 </div>
                 <div class="form-group">
                     <label>Списать бонусов с клиента, ₽</label>
@@ -234,8 +386,8 @@
                     <input type="number" id="closeGiverBonus" value="0" min="0">
                 </div>
                 <div class="form-group">
-                    <label>% начисления бонусов</label>
-                    <input type="number" id="closeBonusRate" value="25" min="0" max="100">
+                    <label>% начисления бонусов (по умолчанию — из настроек)</label>
+                    <input type="number" id="closeBonusRate" placeholder="Оставьте пустым для значения по умолчанию" min="0" max="100">
                 </div>
                 <div class="modal-actions">
                     <button class="btn-cancel" onclick="closeCloseModal()">Отмена</button>
@@ -245,16 +397,15 @@
             document.getElementById('closeModal').classList.add('active');
         }
 
-        function closeCloseModal() {
-            document.getElementById('closeModal').classList.remove('active');
-        }
+        function closeCloseModal() { document.getElementById('closeModal').classList.remove('active'); }
 
         async function submitClose(orderId) {
+            const rateVal = document.getElementById('closeBonusRate').value.trim();
             const payload = {
                 client_bonus_to_spend: parseFloat(document.getElementById('closeBonusSpend').value) || 0,
                 giver_referral_code: document.getElementById('closeGiverCode').value.trim() || null,
                 giver_bonus_to_spend: parseFloat(document.getElementById('closeGiverBonus').value) || 0,
-                bonus_rate: parseFloat(document.getElementById('closeBonusRate').value) || 25
+                bonus_rate: rateVal ? parseFloat(rateVal) : null
             };
             try {
                 const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders/${orderId}/close`, {
@@ -262,21 +413,25 @@
                 });
                 const data = await r.json();
                 if (!r.ok) throw new Error(data.detail || 'Ошибка');
-                alert(`✅ Заявка закрыта!\n\nК оплате: ${fmt(data.final_amount)}\nНачислено клиенту: ${fmt(data.bonus_earned_client)}\nНачислено дарителю: ${fmt(data.bonus_earned_giver)}`);
+                alert(`✅ Заявка закрыта!\n\nК оплате: ${fmt(data.final_amount)}\nЧистыми: ${fmt(data.net_profit)}\nНачислено клиенту: ${fmt(data.bonus_earned_client)}\nНачислено дарителю: ${fmt(data.bonus_earned_giver)}`);
                 closeCloseModal();
                 switchTab('orders');
-            } catch (err) {
-                alert('❌ ' + err.message);
-            }
+            } catch (err) { alert('❌ ' + err.message); }
         }
 
-        // === МОДАЛЬНОЕ ОКНО СОЗДАНИЯ ===
-        function openCreateModal() { document.getElementById('createModal').classList.add('active'); }
+        // === МОДАЛКА СОЗДАНИЯ ===
+        function openCreateModal() {
+            selectedClient = null;
+            document.getElementById('selectedClient').innerHTML = '';
+            document.getElementById('clientQuery').value = '';
+            document.getElementById('createModal').classList.add('active');
+        }
         function closeCreateModal() { document.getElementById('createModal').classList.remove('active'); }
 
         async function submitCreate() {
+            if (!selectedClient) { alert('Выберите клиента'); return; }
             const payload = {
-                client_referral_code: document.getElementById('newClientCode').value.trim(),
+                client_referral_code: selectedClient.referral_code,
                 device_model: document.getElementById('newDevice').value.trim(),
                 works_description: document.getElementById('newWorks').value.trim(),
                 client_amount: parseFloat(document.getElementById('newAmount').value) || 0,
@@ -284,10 +439,7 @@
                 ads_cost: 0,
                 warranty_days: parseInt(document.getElementById('newWarranty').value) || 0
             };
-            if (!payload.client_referral_code || !payload.client_amount) {
-                alert('Заполните ID клиента и сумму');
-                return;
-            }
+            if (!payload.client_amount) { alert('Введите сумму'); return; }
             try {
                 const r = await fetch(`${CONFIG.API_URL}/api/master/${CONFIG.MASTER_MAX_ID}/orders/create`, {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
@@ -297,9 +449,7 @@
                 alert(`✅ Заявка №${data.order_id} создана!`);
                 closeCreateModal();
                 switchTab('orders');
-            } catch (err) {
-                alert('❌ ' + err.message);
-            }
+            } catch (err) { alert('❌ ' + err.message); }
         }
 
         function fmt(v) { return Number(v||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₽'; }
