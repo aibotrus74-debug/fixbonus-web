@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FixBonus — Мой кошелёк</title>
+    <title>FixBonus</title>
     <script src="https://st.max.ru/js/max-web-app.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
@@ -71,6 +71,18 @@
         .toast-error { background:#ef4444; }
         .toast-info { background:#2563eb; }
         @keyframes slideDown { from { opacity:0; transform:translate(-50%,-20px); } to { opacity:1; transform:translate(-50%,0); } }
+        /* Форма */
+        .form-group { margin-bottom:14px; }
+        .form-group label { display:block; font-size:13px; color:#64748b; margin-bottom:6px; }
+        .form-group input { width:100%; padding:14px; border:2px solid #e2e8f0; border-radius:12px; font-size:16px; font-family:inherit; }
+        .form-group input:focus { outline:none; border-color:#2563eb; }
+        .role-btns { display:flex; flex-direction:column; gap:12px; margin-top:20px; }
+        .role-btn { padding:24px 20px; border-radius:16px; border:none; font-size:17px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:14px; text-align:left; }
+        .role-btn.master { background:#2563eb; color:white; }
+        .role-btn.client { background:#10b981; color:white; }
+        .role-btn .role-ico { font-size:36px; }
+        .role-btn .role-title { font-size:17px; font-weight:700; }
+        .role-btn .role-sub { font-size:12px; opacity:0.85; margin-top:4px; }
     </style>
 </head>
 <body>
@@ -97,6 +109,7 @@
         let currentTab = 'wallet';
         let lastInviteText = '';
         let pendingGift = null;
+        let currentUser = null;
 
         function showToast(msg, type = 'info') {
             const el = document.createElement('div');
@@ -108,83 +121,84 @@
         }
 
         async function init() {
-                       // ===== ПРОВЕРКА РОЛИ =====
-            const urlCheckParams = new URLSearchParams(window.location.search);
-
-            // Тестовый режим: ?test_master=100000001 — открыть панель мастера
-            const testMaster = urlCheckParams.get('test_master');
-            if (testMaster) {
-                window.location.href = 'master.html?uid=' + testMaster;
-                return;
-            }
             if (typeof window.WebApp === 'undefined') {
                 showError('Откройте через чат-бота в MAX');
                 return;
             }
             window.WebApp.ready();
 
-            // ===== ПРИЁМ ПРИГЛАШЕНИЯ — читаем из всех возможных мест =====
-            let inviteToken = null;
-
-            // 1. Из MAX Bridge (самый главный источник!)
-            try {
-                const maxData = window.WebApp.initDataUnsafe;
-                console.log('📦 initDataUnsafe:', JSON.stringify(maxData));
-                if (maxData) {
-                    // start_param — официальный параметр MAX
-                    if (maxData.start_param) {
-                        inviteToken = maxData.start_param;
-                        console.log('✅ start_param найден:', inviteToken);
-                    }
-                    // startParam — на всякий случай
-                    if (!inviteToken && maxData.startParam) {
-                        inviteToken = maxData.startParam;
-                    }
-                }
-            } catch (e) {
-                console.warn('initDataUnsafe error:', e);
+            const urlCheckParams = new URLSearchParams(window.location.search);
+            const testMaster = urlCheckParams.get('test_master');
+            if (testMaster) {
+                window.location.href = 'master.html?uid=' + testMaster;
+                return;
             }
 
-            // 2. Из URL (fallback)
-            if (!inviteToken) {
-                const urlParams = new URLSearchParams(window.location.search);
-                inviteToken = urlParams.get('invite') || urlParams.get('startapp') || urlParams.get('start_param');
-                if (inviteToken) console.log('✅ Токен из URL:', inviteToken);
-            }
-
-            // Чистим префикс invite_
-            if (inviteToken && inviteToken.startsWith('invite_')) {
-                inviteToken = inviteToken.replace('invite_', '');
-            }
-
-            console.log('🔗 Финальный токен:', inviteToken);
-
-            // Данные пользователя
             const u = window.WebApp.initDataUnsafe?.user;
             if (!u) { showError('Не удалось получить MAX ID'); return; }
             maxUserId = u.id;
+            currentUser = u;
             console.log('👤 Пользователь:', u.id, u.first_name);
-                        // Определяем, кто зашёл — мастер или клиент
+
+            // === ОПРЕДЕЛЯЕМ РОЛЬ ===
+            let role = 'new';
             try {
                 const roleRes = await fetch(`${API}/api/user/${maxUserId}/role`);
                 if (roleRes.ok) {
                     const roleData = await roleRes.json();
+                    role = roleData.role;
                     console.log('👤 Роль:', roleData);
-                    if (roleData.role === 'master') {
-                        // Это мастер — редирект на панель
+                    if (role === 'master') {
                         window.location.href = 'master.html?uid=' + maxUserId;
                         return;
                     }
                 }
-            } catch (e) {
-                console.warn('Ошибка определения роли:', e);
+            } catch (e) { console.warn('role error:', e); }
+
+            // === ПРИЁМ ПРИГЛАШЕНИЯ ===
+            let inviteToken = null;
+            try {
+                const maxData = window.WebApp.initDataUnsafe;
+                if (maxData && maxData.start_param) inviteToken = maxData.start_param;
+            } catch (e) {}
+            if (!inviteToken) {
+                inviteToken = urlCheckParams.get('invite') || urlCheckParams.get('startapp');
+            }
+            if (inviteToken && inviteToken.startsWith('invite_')) {
+                inviteToken = inviteToken.replace('invite_', '');
+            }
+            console.log('🔗 Токен:', inviteToken);
+
+            // === ЕСЛИ НОВЫЙ ===
+            if (role === 'new') {
+                if (inviteToken) {
+                    // Автоматическая регистрация как клиент через приглашение
+                    try {
+                        const r = await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                token: inviteToken,
+                                name: [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Новый клиент'
+                            })
+                        });
+                        const data = await r.json();
+                        if (r.ok) {
+                            showToast(`🎁 Вам подарили ${Math.round(data.amount)} ₽ от ${data.giver_name}!`, 'success');
+                            setTimeout(() => location.reload(), 1500);
+                            return;
+                        }
+                    } catch (e) { console.warn('invitation error:', e); }
+                }
+                // Показываем экран выбора роли
+                renderRoleChooser();
+                return;
             }
 
-            // Отправляем приглашение на бэкенд
+            // === КЛИЕНТ ===
             if (inviteToken) {
-                console.log('📨 Отправляем приглашение на сервер...');
                 try {
-                    const r = await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
+                    await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
@@ -192,39 +206,185 @@
                             name: [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Новый клиент'
                         })
                     });
-                    const data = await r.json();
-                    console.log('📥 Ответ сервера:', r.status, data);
-                    if (r.ok) {
-                        showToast(`🎁 Вам подарили ${Math.round(data.amount)} ₽ от ${data.giver_name}!`, 'success');
-                    }
-                } catch (e) {
-                    console.error('Ошибка принятия приглашения:', e);
-                }
+                } catch (e) {}
             }
 
-            // Загружаем данные клиента
             try {
                 const r = await fetch(`${API}/api/client/${maxUserId}/full`);
                 if (r.status === 404) { renderNotFound(u); return; }
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 userData = await r.json();
-
-                // Загружаем подарок
                 try {
                     const gr = await fetch(`${API}/api/client/${maxUserId}/pending-gift`);
-                    if (gr.ok) {
-                        const gd = await gr.json();
-                        pendingGift = gd.gift;
-                        console.log('🎁 Подарок:', pendingGift);
-                    }
-                } catch (e) { console.warn('gift load:', e); }
-
+                    if (gr.ok) { const gd = await gr.json(); pendingGift = gd.gift; }
+                } catch (e) {}
                 renderTab();
+            } catch (err) { showError('Ошибка загрузки: ' + err.message); }
+        }
+
+        // === ЭКРАН ВЫБОРА РОЛИ ===
+        function renderRoleChooser() {
+            document.getElementById('tabbar').innerHTML = '';
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="avatar">${currentUser.first_name ? currentUser.first_name[0] : '?'}</div>
+                    <div class="user-name">${currentUser.first_name || 'Гость'}</div>
+                    <div class="user-sub">MAX ID: ${maxUserId}</div>
+                </div>
+                <div class="card">
+                    <div class="section-title">👋 Добро пожаловать!</div>
+                    <p style="font-size:14px; color:#64748b; line-height:1.5;">
+                        Выберите, кто вы — мастер, который чинит технику, или клиент, который получает бонусы за ремонт.
+                    </p>
+                    <div class="role-btns">
+                        <button class="role-btn master" onclick="renderMasterForm()">
+                            <span class="role-ico">🔧</span>
+                            <div>
+                                <div class="role-title">Я МАСТЕР</div>
+                                <div class="role-sub">Веду заявки и клиентов, настраиваю бонусы</div>
+                            </div>
+                        </button>
+                        <button class="role-btn client" onclick="renderClientJoin()">
+                            <span class="role-ico">💎</span>
+                            <div>
+                                <div class="role-title">Я КЛИЕНТ</div>
+                                <div class="role-sub">Коплю и трачу бонусы за ремонт</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <div style="text-align:center; margin-top:20px; color:#94a3b8; font-size:12px;">
+                    Один аккаунт MAX = одна роль. Выбрать можно только один раз.
+                </div>
+            `;
+        }
+
+        // === ФОРМА РЕГИСТРАЦИИ МАСТЕРА ===
+        function renderMasterForm() {
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="user-name" style="font-size:22px;">🔧 Регистрация мастера</div>
+                    <div class="user-sub">Заполните данные — они попадут в акты и чеки</div>
+                </div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>ФИО полностью *</label>
+                        <input type="text" id="regFullName" placeholder="Иванов Иван Иванович">
+                    </div>
+                    <div class="form-group">
+                        <label>ИНН * (10 или 12 цифр)</label>
+                        <input type="text" id="regInn" placeholder="123456789012" maxlength="12" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Название мастерской</label>
+                        <input type="text" id="regWorkshop" placeholder="FixPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Город *</label>
+                        <input type="text" id="regCity" placeholder="Москва">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон для клиентов</label>
+                        <input type="text" id="regPhone" placeholder="+79991234567" inputmode="tel">
+                    </div>
+                    <button class="btn-primary" id="regBtn" onclick="submitMasterRegistration()">✅ Зарегистрироваться</button>
+                    <button class="btn-close" style="width:100%; padding:14px; border-radius:14px; margin-top:8px; border:none; font-size:15px; font-weight:600; background:#f1f5f9; color:#64748b; cursor:pointer;" onclick="renderRoleChooser()">← Назад</button>
+                </div>
+            `;
+        }
+
+        async function submitMasterRegistration() {
+            const fullName = document.getElementById('regFullName').value.trim();
+            const inn = document.getElementById('regInn').value.trim();
+            const workshop = document.getElementById('regWorkshop').value.trim();
+            const city = document.getElementById('regCity').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+
+            if (!fullName || fullName.length < 2) { showToast('Введите ФИО', 'error'); return; }
+            if (!inn || (inn.length !== 10 && inn.length !== 12) || !/^\d+$/.test(inn)) { showToast('ИНН должен быть 10 или 12 цифр', 'error'); return; }
+            if (!city) { showToast('Введите город', 'error'); return; }
+
+            const btn = document.getElementById('regBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Регистрация...';
+
+            try {
+                const r = await fetch(`${API}/api/master/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        max_user_id: maxUserId,
+                        name: [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || fullName,
+                        full_name: fullName,
+                        inn: inn,
+                        workshop_name: workshop,
+                        city: city,
+                        phone: phone
+                    })
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
+                showToast('✅ Регистрация успешна!', 'success');
+                setTimeout(() => {
+                    window.location.href = 'master.html?uid=' + maxUserId;
+                }, 1200);
             } catch (err) {
-                showError('Ошибка загрузки: ' + err.message);
+                showToast('❌ ' + err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '✅ Зарегистрироваться';
             }
         }
 
+        // === ЭКРАН ПРИСОЕДИНЕНИЯ КЛИЕНТА ===
+        function renderClientJoin() {
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div class="user-name" style="font-size:22px;">💎 Я клиент</div>
+                    <div class="user-sub">Введите ID мастера, чтобы привязаться</div>
+                </div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>5-значный ID мастера *</label>
+                        <input type="text" id="joinMasterCode" placeholder="12345" maxlength="5" inputmode="numeric" style="font-size:24px; text-align:center; letter-spacing:8px;">
+                    </div>
+                    <div style="font-size:12px; color:#94a3b8; text-align:center; margin-bottom:14px;">
+                        ID мастера вы можете узнать у самого мастера
+                    </div>
+                    <button class="btn-primary" id="joinBtn" onclick="submitClientJoin()">✅ Присоединиться</button>
+                    <button class="btn-close" style="width:100%; padding:14px; border-radius:14px; margin-top:8px; border:none; font-size:15px; font-weight:600; background:#f1f5f9; color:#64748b; cursor:pointer;" onclick="renderRoleChooser()">← Назад</button>
+                </div>
+            `;
+        }
+
+        async function submitClientJoin() {
+            const code = document.getElementById('joinMasterCode').value.trim();
+            if (!code || code.length !== 5) { showToast('Введите 5-значный ID мастера', 'error'); return; }
+
+            const btn = document.getElementById('joinBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Присоединяем...';
+
+            try {
+                const r = await fetch(`${API}/api/client/${maxUserId}/join-by-master-code`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        master_code: code,
+                        name: [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'Новый клиент'
+                    })
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
+                showToast('✅ Вы присоединились к мастеру!', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } catch (err) {
+                showToast('❌ ' + err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '✅ Присоединиться';
+            }
+        }
+
+        // ============ КЛИЕНТСКИЕ ЭКРАНЫ (кошелёк и т.д.) ============
         function renderTabBar() {
             const tabs = [
                 { id: 'wallet', ico: '💎', label: 'Кошелёк' },
@@ -254,23 +414,15 @@
                     <div><div class="lot-reason">${l.reason}</div><div class="lot-exp">Сгорят: ${l.expires_at}</div></div>
                     <div class="lot-amount">${fmt(l.remaining)}</div>
                 </div>`).join('') : '<div class="empty">Пока нет активных бонусов</div>';
-
-const giftHtml = pendingGift ? `
-    <div class="gift-banner">
-        <h3>🎁 Вам подарили скидку!</h3>
-        <div class="amount">${fmt(pendingGift.amount)}</div>
-        <div class="from">От: <b>${pendingGift.giver_name}</b> (ID ${pendingGift.giver_code})</div>
-        <div class="from" style="margin-top:12px; font-size:13px; background:rgba(255,255,255,0.15); padding:10px; border-radius:10px;">
-            💡 <b>Как использовать:</b><br>
-            Просто вызовите мастера.<br>
-            При закрытии заявки мастер применит подарок — и вы заплатите на ${fmt(pendingGift.amount)} меньше.
-        </div>
-        <div class="from" style="margin-top:8px; font-size:11px; opacity:0.75;">
-            Подарок применится автоматически при следующем ремонте
-        </div>
-    </div>
-` : '';
-
+            const giftHtml = pendingGift ? `
+                <div class="gift-banner">
+                    <h3>🎁 Вам подарили скидку!</h3>
+                    <div class="amount">${fmt(pendingGift.amount)}</div>
+                    <div class="from">От: <b>${pendingGift.giver_name}</b> (ID ${pendingGift.giver_code})</div>
+                    <div class="from" style="margin-top:12px; font-size:13px; background:rgba(255,255,255,0.15); padding:10px; border-radius:10px;">
+                        💡 <b>Как использовать:</b><br>Просто вызовите мастера.<br>При закрытии заявки мастер применит подарок — и вы заплатите на ${fmt(pendingGift.amount)} меньше.
+                    </div>
+                </div>` : '';
             document.getElementById('app').innerHTML = `
                 <div class="header">
                     <div class="avatar">${c.name[0]}</div>
@@ -297,8 +449,7 @@ const giftHtml = pendingGift ? `
                     <div style="margin-top:4px;">🏢 ${m.workshop}</div>
                     <div style="margin-top:4px;">📞 ${m.phone}</div>
                     <div style="margin-top:4px;">ИНН: ${m.inn}</div>
-                </div>
-            `;
+                </div>`;
         }
 
         function renderRules() {
@@ -309,12 +460,11 @@ const giftHtml = pendingGift ? `
                 <div class="card">
                     <div class="rule-block"><span class="rule-num">1</span><b>Как я получаю бонусы?</b><br>За каждый ремонт вы получаете <b>${p.bonus_rate_default}%</b> от суммы чека.<br><br>Например: чек 5 000 ₽ → вы получаете <b>${earnExample} ₽</b> бонусов.</div>
                     <div class="rule-block"><span class="rule-num">2</span><b>Когда начисляют?</b><br>Бонусы приходят автоматически через <b>24 часа</b> после закрытия заявки.</div>
-                    <div class="rule-block"><span class="rule-num">3</span><b>Сколько живут бонусы?</b><br>${p.enable_expiration ? `Каждая партия бонусов живёт <b>${p.bonus_lifetime_months} месяцев</b> с момента начисления. Затем сгорает.` : '<b>Бонусы не сгорают</b> — действуют бессрочно.'}<br><br>Мы напоминаем заранее — за 60/30/7/1 день.</div>
-                    <div class="rule-block"><span class="rule-num">4</span><b>Как потратить?</b><br>Бонусами можно оплатить до <b>${p.bonus_max_spend_percent}%</b> от чека.<br><br>Порядок списания: сначала та партия, что сгорит раньше.</div>
-                    <div class="rule-block"><span class="rule-num">5</span><b>Как поделиться с близкими?</b><br>${p.enable_referral ? `Приходите вместе с другом.<br>После ремонта друга:<br>• Другу — скидка на сумму подарка<br>• Начисленные бонусы делятся <b>${p.referral_split_percent}/${100-p.referral_split_percent}</b> между вами и другом` : 'Реферальная программа у мастера отключена.'}</div>
-                    <div class="rule-block"><span class="rule-num">6</span><b>Дополнительные бонусы</b><br>🎂 День рождения — <b>${p.birthday_bonus} ₽</b><br>📸 Отзыв с фото — <b>${p.review_bonus} ₽</b><br>✍️ Заполнен профиль — <b>${p.profile_bonus} ₽</b></div>
-                </div>
-            `;
+                    <div class="rule-block"><span class="rule-num">3</span><b>Сколько живут бонусы?</b><br>${p.enable_expiration ? `Каждая партия бонусов живёт <b>${p.bonus_lifetime_months} месяцев</b> с момента начисления. Затем сгорает.` : '<b>Бонусы не сгорают</b>.'}<br><br>Мы напоминаем заранее.</div>
+                    <div class="rule-block"><span class="rule-num">4</span><b>Как потратить?</b><br>Бонусами можно оплатить до <b>${p.bonus_max_spend_percent}%</b> от чека.<br><br>Порядок: сначала та партия, что сгорит раньше.</div>
+                    <div class="rule-block"><span class="rule-num">5</span><b>Как поделиться?</b><br>${p.enable_referral ? `Дарите часть бонусов другу.<br>После ремонта друга начисленные бонусы делятся <b>${p.referral_split_percent}/${100-p.referral_split_percent}</b> между вами и другом.` : 'Реферальная программа отключена.'}</div>
+                    <div class="rule-block"><span class="rule-num">6</span><b>Дополнительные бонусы</b><br>🎂 День рождения — <b>${p.birthday_bonus} ₽</b><br>📸 Отзыв с фото — <b>${p.review_bonus} ₽</b><br>✍️ Профиль — <b>${p.profile_bonus} ₽</b></div>
+                </div>`;
         }
 
         function renderOrders() {
@@ -349,7 +499,7 @@ const giftHtml = pendingGift ? `
                 <div class="header"><div class="user-name" style="font-size:22px;">🎁 Поделиться бонусами</div><div class="user-sub">Пригласите друга — он получит скидку</div></div>
                 <div class="card">
                     <div class="section-title">Ваш баланс: ${fmt(balance)}</div>
-                    ${balance < 100 ? '<div class="empty">Минимум 100 ₽ для подарка. Скопите ещё немного бонусов!</div>' : `
+                    ${balance < 100 ? '<div class="empty">Минимум 100 ₽ для подарка.</div>' : `
                         <input type="number" class="amount-input" id="giftAmount" value="500" min="100" inputmode="numeric">
                         <div class="quick-btns">
                             <button class="quick-btn" onclick="setAmount(25)">25%</button>
@@ -362,11 +512,10 @@ const giftHtml = pendingGift ? `
                 <div class="card">
                     <div class="section-title">📖 Как это работает</div>
                     <div class="rule-block"><b>1.</b> Вы дарите часть бонусов другу</div>
-                    <div class="rule-block"><b>2.</b> Друг открывает ссылку — сразу становится вашим рефералом</div>
-                    <div class="rule-block"><b>3.</b> Приходите вместе к мастеру — друг получает скидку</div>
-                    <div class="rule-block"><b>4.</b> После ремонта друга бонусы делятся <b>${userData.program.referral_split_percent}/${100-userData.program.referral_split_percent}</b> между вами</div>
-                </div>
-            `;
+                    <div class="rule-block"><b>2.</b> Друг открывает ссылку — привязывается к вашему мастеру</div>
+                    <div class="rule-block"><b>3.</b> Друг вызывает мастера — получает скидку</div>
+                    <div class="rule-block"><b>4.</b> Бонусы за его ремонт делятся <b>${userData.program.referral_split_percent}/${100-userData.program.referral_split_percent}</b> между вами</div>
+                </div>`;
         }
 
         function setAmount(percent) {
@@ -378,59 +527,44 @@ const giftHtml = pendingGift ? `
 
         async function createInvite() {
             const el = document.getElementById('giftAmount');
-            if (!el) { showToast('Ошибка: поле не найдено', 'error'); return; }
-            const raw = String(el.value || el.textContent || '');
+            const raw = String(el.value || '');
             const amount = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
             const balance = userData.client.bonus_balance;
-
-            if (amount < 100) { showToast('Минимум 100 ₽. Вы ввели: ' + amount, 'error'); return; }
-            if (amount > balance) { showToast('Недостаточно бонусов. Максимум: ' + fmt(balance), 'error'); return; }
-
+            if (amount < 100) { showToast('Минимум 100 ₽', 'error'); return; }
+            if (amount > balance) { showToast('Недостаточно бонусов', 'error'); return; }
             const btn = document.getElementById('giftBtn');
             btn.disabled = true;
             btn.textContent = '⏳ Создаём...';
-
             try {
                 const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
+                    method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({ amount })
                 });
                 const data = await r.json();
-                if (!r.ok) throw new Error(data.detail || 'Ошибка сервера');
-
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
                 lastInviteText = data.share_text;
                 document.getElementById('inviteText').textContent = data.share_text;
                 document.getElementById('inviteModal').classList.add('active');
-                showToast('Приглашение на ' + fmt(amount) + ' создано!', 'success');
+                showToast('Приглашение создано!', 'success');
             } catch (err) {
                 showToast('❌ ' + err.message, 'error');
             } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = '🎁 Создать приглашение';
-                }
+                if (btn) { btn.disabled = false; btn.textContent = '🎁 Создать приглашение'; }
             }
         }
 
         async function tryNativeShare() {
             const text = lastInviteText;
-            if (!text) { showToast('Нет текста для отправки', 'error'); return; }
+            if (!text) return;
             try {
                 if (window.WebApp && typeof window.WebApp.shareContent === 'function') {
-                    await window.WebApp.shareContent({ text: text });
+                    await window.WebApp.shareContent({ text });
                     return;
                 }
-            } catch (e) { console.warn('shareContent:', e); }
+            } catch (e) {}
             try {
-                if (navigator.share) {
-                    await navigator.share({ text: text, title: 'FixBonus' });
-                    return;
-                }
-            } catch (e) {
-                if (e && e.name === 'AbortError') return;
-                console.warn('navigator.share:', e);
-            }
+                if (navigator.share) { await navigator.share({ text, title: 'FixBonus' }); return; }
+            } catch (e) { if (e && e.name === 'AbortError') return; }
             await copyInvite();
         }
 
@@ -440,28 +574,20 @@ const giftHtml = pendingGift ? `
             try {
                 if (navigator.clipboard && window.isSecureContext) {
                     await navigator.clipboard.writeText(text);
-                    showToast('✅ Текст скопирован! Вставьте другу.', 'success');
+                    showToast('✅ Текст скопирован!', 'success');
                     return;
                 }
-            } catch (e) { console.warn('clipboard:', e); }
+            } catch (e) {}
             try {
                 const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
+                ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+                document.body.appendChild(ta); ta.select();
+                document.execCommand('copy'); document.body.removeChild(ta);
                 showToast('✅ Текст скопирован!', 'success');
-            } catch (e) {
-                showToast('⚠️ Не удалось скопировать. Выделите текст вручную.', 'error');
-            }
+            } catch (e) { showToast('⚠️ Не удалось скопировать', 'error'); }
         }
 
-        function closeInviteModal() {
-            document.getElementById('inviteModal').classList.remove('active');
-        }
+        function closeInviteModal() { document.getElementById('inviteModal').classList.remove('active'); }
 
         function renderNotFound(u) {
             document.getElementById('app').innerHTML = `
@@ -469,10 +595,8 @@ const giftHtml = pendingGift ? `
                 <div class="card" style="background:#fef3c7; border:1px solid #fcd34d; text-align:center;">
                     <h3 style="color:#92400e; margin-bottom:12px;">🔍 Вас нет в базе мастера</h3>
                     <p style="color:#92400e;">Передайте мастеру ваш MAX ID:</p>
-                    <div style="font-size:28px; font-weight:700; color:#92400e; margin:16px 0; letter-spacing:2px;">${u.id}</div>
-                </div>
-                <button class="btn-primary" onclick="location.reload()">🔄 Обновить</button>
-            `;
+                    <div style="font-size:28px; font-weight:700; color:#92400e; margin:16px 0;">${u.id}</div>
+                </div>`;
         }
 
         function showError(msg) {
