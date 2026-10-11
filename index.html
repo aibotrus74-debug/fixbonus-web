@@ -37,8 +37,7 @@
         .rule-block { background:#f8fafc; border-radius:12px; padding:14px; margin-bottom:10px; font-size:14px; line-height:1.5; }
         .rule-block b { color:#2563eb; }
         .rule-num { display:inline-block; width:24px; height:24px; border-radius:50%; background:#2563eb; color:white; text-align:center; line-height:24px; font-size:12px; font-weight:600; margin-right:8px; }
-        .order-card { border-left:3px solid #10b981; padding-left:14px; margin-bottom:14px; }
-        .order-card.warranty { border-left-color:#f59e0b; }
+        .order-card { border-left:3px solid #10b981; padding-left:14px; }
         .order-device { font-size:15px; font-weight:600; }
         .order-works { font-size:13px; color:#64748b; margin-top:4px; }
         .order-row { display:flex; justify-content:space-between; margin-top:8px; font-size:13px; }
@@ -46,26 +45,67 @@
         .warranty-badge { display:inline-block; background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; margin-top:6px; }
         .warranty-ok { background:#d1fae5; color:#065f46; }
         .btn-primary { width:100%; padding:16px; border-radius:14px; background:#2563eb; color:white; border:none; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
-        .btn-primary:disabled { opacity:0.5; }
         .btn-gift { width:100%; padding:16px; border-radius:14px; background:#10b981; color:white; border:none; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
-        .amount-input { width:100%; padding:16px; border:2px solid #e2e8f0; border-radius:14px; font-size:24px; font-weight:600; text-align:center; color:#2563eb; margin-bottom:12px; font-family:inherit; }
+        .amount-input { width:100%; padding:16px; border:2px solid #e2e8f0; border-radius:14px; font-size:24px; font-weight:600; text-align:center; color:#2563eb; margin-bottom:12px; }
         .amount-input:focus { outline:none; border-color:#2563eb; }
         .quick-btns { display:flex; gap:8px; margin-bottom:14px; }
         .quick-btn { flex:1; padding:10px; border-radius:10px; background:#f1f5f9; border:none; font-size:14px; font-weight:600; cursor:pointer; color:#2563eb; }
-        .preview { background:#f8fafc; border-radius:12px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; margin-bottom:14px; max-height:200px; overflow-y:auto; }
         .master-card { background:white; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.05); font-size:13px; }
         .master-card b { color:#2563eb; }
+        /* Модальное окно */
+        .modal-bg { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:16px; }
+        .modal-bg.active { display:flex; }
+        .modal { background:white; border-radius:20px; padding:20px; max-width:500px; width:100%; max-height:90vh; overflow-y:auto; }
+        .modal h3 { font-size:18px; margin-bottom:14px; }
+        .share-text { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:280px; overflow-y:auto; margin-bottom:14px; font-family:-apple-system,monospace; }
+        .modal-actions { display:flex; flex-direction:column; gap:8px; }
+        .modal-btn { padding:14px; border-radius:12px; border:none; font-size:15px; font-weight:600; cursor:pointer; }
+        .btn-share { background:#10b981; color:white; }
+        .btn-copy { background:#2563eb; color:white; }
+        .btn-close { background:#f1f5f9; color:#64748b; }
+        /* Toast-уведомления */
+        .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); padding:14px 20px; border-radius:12px; color:white; font-size:14px; font-weight:500; z-index:1000; box-shadow:0 4px 20px rgba(0,0,0,0.25); max-width:90%; text-align:center; animation:slideDown 0.3s ease; }
+        .toast-success { background:#10b981; }
+        .toast-error { background:#ef4444; }
+        .toast-info { background:#2563eb; }
+        @keyframes slideDown { from { opacity:0; transform:translate(-50%,-20px); } to { opacity:1; transform:translate(-50%,0); } }
     </style>
 </head>
 <body>
     <div id="app"><div class="loader">⏳ Загрузка...</div></div>
     <div id="tabbar"></div>
 
+    <!-- Модальное окно для приглашения -->
+    <div class="modal-bg" id="inviteModal">
+        <div class="modal">
+            <h3>🎁 Приглашение готово!</h3>
+            <p style="font-size:13px; color:#64748b; margin-bottom:12px;">Отправьте другу любым удобным способом:</p>
+            <div class="share-text" id="inviteText"></div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-share" onclick="tryNativeShare()">📤 Поделиться в приложении</button>
+                <button class="modal-btn btn-copy" onclick="copyInvite()">📋 Скопировать текст</button>
+                <button class="modal-btn btn-close" onclick="closeInviteModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API = 'https://141.133.206.43.nip.io';
         let maxUserId = null;
         let userData = null;
         let currentTab = 'wallet';
+        let lastInviteText = '';
+
+        // ============ TOAST-УВЕДОМЛЕНИЯ (заменяют alert) ============
+        function showToast(msg, type = 'info') {
+            const cls = 'toast toast-' + type;
+            const el = document.createElement('div');
+            el.className = cls;
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; }, 2500);
+            setTimeout(() => el.remove(), 3000);
+        }
 
         async function init() {
             if (typeof window.WebApp === 'undefined') {
@@ -117,7 +157,6 @@
                     <div><div class="lot-reason">${l.reason}</div><div class="lot-exp">Сгорят: ${l.expires_at}</div></div>
                     <div class="lot-amount">${fmt(l.remaining)}</div>
                 </div>`).join('') : '<div class="empty">Пока нет активных бонусов</div>';
-
             document.getElementById('app').innerHTML = `
                 <div class="header">
                     <div class="avatar">${c.name[0]}</div>
@@ -149,10 +188,7 @@
 
         function renderRules() {
             const p = userData.program;
-            const money = userData.client.bonus_balance;
-            const example = Math.round(money > 0 ? money : 5000);
             const earnExample = Math.round(5000 * p.bonus_rate_default / 100);
-
             document.getElementById('app').innerHTML = `
                 <div class="header"><div class="user-name" style="font-size:22px;">📘 Как работают мои бонусы</div></div>
                 <div class="card">
@@ -181,18 +217,13 @@
                     const active = wDate > now;
                     warrantyHtml = `<div class="warranty-badge ${active?'warranty-ok':''}">🛡 ${active?'Гарантия до ':'Гарантия истекла '}${o.warranty_until}</div>`;
                 }
-                return `<div class="card">
-                    <div class="order-card ${o.status==='closed'?'':''}">
-                        <div class="order-device">№${o.id} — ${o.device}</div>
-                        <div class="order-works">${o.works}</div>
-                        <div class="order-row">
-                            <div>${o.completed_at || ''}</div>
-                            <div class="order-amount">${fmt(o.final)}</div>
-                        </div>
-                        ${o.discount > 0 ? `<div class="order-row" style="color:#f59e0b; font-size:12px;"><div>Скидка бонусами:</div><div>−${fmt(o.discount)}</div></div>` : ''}
-                        ${warrantyHtml}
-                    </div>
-                </div>`;
+                return `<div class="card"><div class="order-card">
+                    <div class="order-device">№${o.id} — ${o.device}</div>
+                    <div class="order-works">${o.works}</div>
+                    <div class="order-row"><div>${o.completed_at || ''}</div><div class="order-amount">${fmt(o.final)}</div></div>
+                    ${o.discount > 0 ? `<div class="order-row" style="color:#f59e0b; font-size:12px;"><div>Скидка бонусами:</div><div>−${fmt(o.discount)}</div></div>` : ''}
+                    ${warrantyHtml}
+                </div></div>`;
             }).join('');
             document.getElementById('app').innerHTML = `<div class="header"><div class="user-name" style="font-size:22px;">🔧 Мои ремонты</div><div class="user-sub">Всего: ${orders.length}</div></div>${html}`;
         }
@@ -204,13 +235,13 @@
                 <div class="card">
                     <div class="section-title">Ваш баланс: ${fmt(balance)}</div>
                     ${balance < 100 ? '<div class="empty">Минимум 100 ₽ для подарка. Скопите ещё немного бонусов!</div>' : `
-                        <div class="amount-input" id="giftAmount" contenteditable="true" style="outline:none;">500</div>
+                        <input type="number" class="amount-input" id="giftAmount" value="500" min="100" inputmode="numeric">
                         <div class="quick-btns">
                             <button class="quick-btn" onclick="setAmount(25)">25%</button>
                             <button class="quick-btn" onclick="setAmount(50)">50%</button>
                             <button class="quick-btn" onclick="setAmount(100)">Всё</button>
                         </div>
-                        <button class="btn-gift" onclick="createInvite()">🎁 Создать приглашение</button>
+                        <button class="btn-gift" id="giftBtn" onclick="createInvite()">🎁 Создать приглашение</button>
                     `}
                 </div>
                 <div class="card">
@@ -226,79 +257,118 @@
         function setAmount(percent) {
             const balance = userData.client.bonus_balance;
             const val = Math.round(balance * percent / 100);
-            document.getElementById('giftAmount').textContent = val;
+            document.getElementById('giftAmount').value = val;
+            showToast('Сумма: ' + fmt(val), 'info');
         }
 
-async function createInvite() {
-    const el = document.getElementById('giftAmount');
-    const amount = parseInt(el.value) || 0;
-    const balance = userData.client.bonus_balance;
+        async function createInvite() {
+            // === Устойчивое чтение суммы ===
+            const el = document.getElementById('giftAmount');
+            if (!el) { showToast('Ошибка: поле не найдено', 'error'); return; }
 
-    if (amount < 100) { alert('Минимум 100 ₽'); return; }
-    if (amount > balance) { alert('Недостаточно бонусов. Максимум: ' + fmt(balance)); return; }
+            const raw = el.value !== undefined && el.value !== null && el.value !== '' 
+                ? String(el.value) 
+                : String(el.textContent || '');
+            const cleaned = raw.replace(/[^\d]/g, '');
+            const amount = parseInt(cleaned, 10) || 0;
 
-    const btn = document.getElementById('giftBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Создаём...';
+            const balance = userData.client.bonus_balance;
 
-    try {
-        const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ amount })
-        });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.detail || 'Ошибка сервера');
+            if (amount < 100) { showToast('Минимум 100 ₽. Вы ввели: ' + amount, 'error'); return; }
+            if (amount > balance) { showToast('Недостаточно бонусов. Максимум: ' + fmt(balance), 'error'); return; }
 
-        const shareText = data.share_text;
-        const shareUrl = data.invite_url; // Пока это ссылка на GitHub Pages
+            const btn = document.getElementById('giftBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Создаём...';
 
-        // 1. Пытаемся использовать нативный шеринг MAX
-        if (window.WebApp && typeof window.WebApp.shareContent === 'function') {
             try {
-                await window.WebApp.shareContent({
-                    text: shareText,
-                    link: shareUrl
+                const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ amount })
                 });
-                // Если окно открылось — выходим, ничего больше не нужно
-                btn.disabled = false;
-                btn.textContent = '🎁 Создать приглашение';
-                return;
-            } catch (e) {
-                console.warn('WebApp.shareContent не сработал, пробуем запасной вариант', e);
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка сервера');
+
+                lastInviteText = data.share_text;
+                document.getElementById('inviteText').textContent = data.share_text;
+                document.getElementById('inviteModal').classList.add('active');
+                showToast('Приглашение на ' + fmt(amount) + ' создано!', 'success');
+            } catch (err) {
+                showToast('❌ ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '🎁 Создать приглашение';
+                }
             }
         }
 
-        // 2. Запасной вариант — Web Share API (iOS Safari / Android Chrome)
-        if (navigator.share) {
+        // === Попытка поделиться через нативный шеринг ===
+        async function tryNativeShare() {
+            const text = lastInviteText;
+            if (!text) { showToast('Нет текста для отправки', 'error'); return; }
+
+            // 1. MAX Bridge native share
             try {
-                await navigator.share({
-                    title: 'FixBonus — бонусы на ремонт',
-                    text: shareText,
-                    url: shareUrl
-                });
-                btn.disabled = false;
-                btn.textContent = '🎁 Создать приглашение';
-                return;
+                if (window.WebApp && typeof window.WebApp.shareContent === 'function') {
+                    await window.WebApp.shareContent({ text: text });
+                    return;
+                }
             } catch (e) {
-                console.warn('navigator.share не сработал', e);
+                console.warn('WebApp.shareContent failed:', e);
+            }
+
+            // 2. Web Share API (iOS Safari, Android Chrome)
+            try {
+                if (navigator.share) {
+                    await navigator.share({ text: text, title: 'FixBonus — бонусы на ремонт' });
+                    return;
+                }
+            } catch (e) {
+                console.warn('navigator.share failed:', e);
+                // Пользователь мог просто закрыть окно — это не ошибка
+                if (e && e.name === 'AbortError') return;
+            }
+
+            // 3. Fallback — копирование
+            await copyInvite();
+        }
+
+        // === Копирование текста ===
+        async function copyInvite() {
+            const text = lastInviteText;
+            if (!text) return;
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    showToast('✅ Текст скопирован! Вставьте другу.', 'success');
+                    return;
+                }
+            } catch (e) {
+                console.warn('clipboard failed:', e);
+            }
+
+            // Fallback для старых браузеров
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('✅ Текст скопирован!', 'success');
+            } catch (e) {
+                showToast('⚠️ Не удалось скопировать. Выделите текст вручную.', 'error');
             }
         }
 
-        // 3. Последний fallback — показываем модальное окно с копированием
-        lastInviteText = shareText;
-        document.getElementById('inviteText').textContent = shareText;
-        document.getElementById('inviteModal').classList.add('active');
-
-    } catch (err) {
-        alert('❌ ' + err.message);
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = '🎁 Создать приглашение';
+        function closeInviteModal() {
+            document.getElementById('inviteModal').classList.remove('active');
         }
-    }
-}
 
         function renderNotFound(u) {
             document.getElementById('app').innerHTML = `
