@@ -101,7 +101,7 @@
     </div>
 
     <script>
-        const CONFIG = { API_URL: 'https://141.133.206.43.nip.io', MASTER_MAX_ID: 100000001 };
+        const CONFIG = { API_URL: 'https://141.133.206.43.nip.io', MASTER_MAX_ID: parseInt(new URLSearchParams(window.location.search).get('uid')) || 100000001 };
         let currentTab = 'dashboard';
         let selectedClient = null;
         let searchTimeout = null;
