@@ -118,7 +118,36 @@
         let selectedClient = null;
         let searchTimeout = null;
 
-        function init() { loadMasterInfo(); renderTabs(); loadTab('dashboard'); }
+        function init() { loadMasterInfo(); checkNotifications(); renderTabs(); loadTab('dashboard'); }
+
+async function checkNotifications() {
+    try {
+        const r = await fetch(`${CONFIG.API_URL}/api/user/${CONFIG.MASTER_MAX_ID}/has-chat-id`);
+        if (r.ok) {
+            const d = await r.json();
+            if (!d.has) {
+                document.getElementById('notifyBanner').innerHTML = `
+                    <div style="background:linear-gradient(135deg,#f59e0b,#fbbf24); color:white; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 4px 16px rgba(245,158,11,0.3);">
+                        <div style="font-size:16px; font-weight:700; margin-bottom:6px;">🔔 Включите уведомления</div>
+                        <div style="font-size:13px; opacity:0.95; margin-bottom:12px;">Получайте push о новых заявках и статусе ремонтов.</div>
+                        <button onclick="enableNotifications()" style="width:100%; background:white; color:#f59e0b; border:none; padding:12px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer;">🔔 Подключить</button>
+                    </div>
+                `;
+            }
+        }
+    } catch (e) { console.warn(e); }
+}
+
+function enableNotifications() {
+    const url = 'https://max.ru/id740416295447_3_bot';
+    try {
+        if (window.WebApp && typeof window.WebApp.openMaxLink === 'function') {
+            window.WebApp.openMaxLink(url);
+            return;
+        }
+    } catch (e) {}
+    window.open(url, '_blank');
+}
 
 async function loadMasterInfo() {
     try {
@@ -147,7 +176,8 @@ async function loadMasterInfo() {
                     <button class="btn-new" onclick="openCreateModal()">+ Новая заявка</button>
                     <button class="btn-new" style="background:#7c3aed;" onclick="openInviteLinkModal()">🔗 Ссылка для клиента</button>
                 </div>
-                <div id="content"><div class="loader">⏳ Загрузка...</div></div>
+                <div id="notifyBanner"></div>
+<div id="content"><div class="loader">⏳ Загрузка...</div></div>
             `;
         }
 
