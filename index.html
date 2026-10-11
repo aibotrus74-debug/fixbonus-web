@@ -6,234 +6,276 @@
     <title>FixBonus — Мой кошелёк</title>
     <script src="https://st.max.ru/js/max-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #f4f6f8; color: #1a1a2e; padding: 16px; min-height: 100vh; }
-        .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 600; }
-        .user-name { font-size: 18px; font-weight: 600; }
-        .user-platform { font-size: 13px; color: #64748b; }
-        .balance-card { background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 20px; padding: 24px; color: white; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3); }
-        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
-        .balance-amount { font-size: 40px; font-weight: 700; letter-spacing: -1px; }
-        .balance-sub { font-size: 13px; opacity: 0.85; margin-top: 8px; }
-        .my-id-card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
-        .my-id-label { font-size: 13px; color: #64748b; margin-bottom: 8px; }
-        .my-id-value { font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #2563eb; font-variant-numeric: tabular-nums; }
-        .my-id-hint { font-size: 12px; color: #94a3b8; margin-top: 8px; }
-        .lots-section { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
-        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-        .lot-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .lot-item:last-child { border-bottom: none; }
-        .lot-reason { font-size: 14px; margin-bottom: 4px; }
-        .lot-expires { font-size: 12px; color: #94a3b8; }
-        .lot-amount { font-size: 18px; font-weight: 600; color: #10b981; }
-        .empty-state { text-align: center; padding: 24px; color: #94a3b8; font-size: 14px; }
-        .loader { text-align: center; padding: 40px; color: #64748b; }
-        .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; color: #991b1b; font-size: 14px; margin-bottom: 16px; }
-        .not-found-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 12px; padding: 20px; text-align: center; }
-        .not-found-box h3 { color: #92400e; margin-bottom: 12px; font-size: 18px; }
-        .max-id-big { font-size: 28px; font-weight: 700; color: #92400e; margin: 16px 0; letter-spacing: 2px; word-break: break-all; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+        body { background:#f4f6f8; color:#1a1a2e; padding:16px; padding-bottom:90px; min-height:100vh; }
+        .tab-bar { position:fixed; bottom:0; left:0; right:0; background:white; display:flex; justify-content:space-around; padding:8px 0; box-shadow:0 -2px 12px rgba(0,0,0,0.08); border-top:1px solid #e2e8f0; z-index:50; }
+        .tab-btn { flex:1; background:none; border:none; padding:8px 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; color:#64748b; font-size:11px; }
+        .tab-btn.active { color:#2563eb; }
+        .tab-btn .ico { font-size:22px; }
+        .header { margin-bottom:20px; }
+        .avatar { width:48px; height:48px; border-radius:50%; background:#2563eb; display:flex; align-items:center; justify-content:center; color:white; font-size:20px; font-weight:600; }
+        .user-name { font-size:18px; font-weight:600; }
+        .user-sub { font-size:12px; color:#64748b; margin-top:2px; }
+        .card { background:white; border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .balance-card { background:linear-gradient(135deg,#f59e0b,#fbbf24); color:white; padding:24px; border-radius:20px; margin-bottom:16px; box-shadow:0 4px 16px rgba(245,158,11,0.3); }
+        .balance-label { font-size:13px; opacity:0.9; margin-bottom:6px; }
+        .balance-amount { font-size:40px; font-weight:700; letter-spacing:-1px; }
+        .balance-sub { font-size:12px; opacity:0.85; margin-top:6px; }
+        .id-card { background:white; border-radius:16px; padding:20px; text-align:center; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .id-label { font-size:12px; color:#64748b; margin-bottom:8px; }
+        .id-value { font-size:32px; font-weight:700; letter-spacing:8px; color:#2563eb; }
+        .id-hint { font-size:11px; color:#94a3b8; margin-top:6px; }
+        .section-title { font-size:16px; font-weight:600; margin-bottom:12px; }
+        .lot { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #f1f5f9; }
+        .lot:last-child { border-bottom:none; }
+        .lot-reason { font-size:14px; margin-bottom:4px; }
+        .lot-exp { font-size:12px; color:#94a3b8; }
+        .lot-amount { font-size:18px; font-weight:600; color:#10b981; }
+        .empty { text-align:center; padding:24px; color:#94a3b8; font-size:14px; }
+        .loader { text-align:center; padding:40px; color:#64748b; }
+        .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:16px; color:#991b1b; font-size:14px; }
+        .rule-block { background:#f8fafc; border-radius:12px; padding:14px; margin-bottom:10px; font-size:14px; line-height:1.5; }
+        .rule-block b { color:#2563eb; }
+        .rule-num { display:inline-block; width:24px; height:24px; border-radius:50%; background:#2563eb; color:white; text-align:center; line-height:24px; font-size:12px; font-weight:600; margin-right:8px; }
+        .order-card { border-left:3px solid #10b981; padding-left:14px; margin-bottom:14px; }
+        .order-card.warranty { border-left-color:#f59e0b; }
+        .order-device { font-size:15px; font-weight:600; }
+        .order-works { font-size:13px; color:#64748b; margin-top:4px; }
+        .order-row { display:flex; justify-content:space-between; margin-top:8px; font-size:13px; }
+        .order-amount { font-weight:600; color:#10b981; }
+        .warranty-badge { display:inline-block; background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; margin-top:6px; }
+        .warranty-ok { background:#d1fae5; color:#065f46; }
+        .btn-primary { width:100%; padding:16px; border-radius:14px; background:#2563eb; color:white; border:none; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
+        .btn-primary:disabled { opacity:0.5; }
+        .btn-gift { width:100%; padding:16px; border-radius:14px; background:#10b981; color:white; border:none; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px; }
+        .amount-input { width:100%; padding:16px; border:2px solid #e2e8f0; border-radius:14px; font-size:24px; font-weight:600; text-align:center; color:#2563eb; margin-bottom:12px; font-family:inherit; }
+        .amount-input:focus { outline:none; border-color:#2563eb; }
+        .quick-btns { display:flex; gap:8px; margin-bottom:14px; }
+        .quick-btn { flex:1; padding:10px; border-radius:10px; background:#f1f5f9; border:none; font-size:14px; font-weight:600; cursor:pointer; color:#2563eb; }
+        .preview { background:#f8fafc; border-radius:12px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; margin-bottom:14px; max-height:200px; overflow-y:auto; }
+        .master-card { background:white; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.05); font-size:13px; }
+        .master-card b { color:#2563eb; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="loader">⏳ Загружаем данные из MAX...</div>
-    </div>
+    <div id="app"><div class="loader">⏳ Загрузка...</div></div>
+    <div id="tabbar"></div>
 
     <script>
-        // ============================================================
-        // КОНФИГУРАЦИЯ
-        // ============================================================
-        const CONFIG = {
-            API_URL: 'https://141.133.206.43.nip.io'
-        };
+        const API = 'https://141.133.206.43.nip.io';
+        let maxUserId = null;
+        let userData = null;
+        let currentTab = 'wallet';
 
-        // ============================================================
-        // 1. ИНИЦИАЛИЗАЦИЯ MAX BRIDGE
-        // ============================================================
-        function initMaxApp() {
+        async function init() {
             if (typeof window.WebApp === 'undefined') {
-                showError('MAX Bridge не загрузился. Откройте через чат-бота в MAX.');
+                showError('Откройте через чат-бота в MAX');
                 return;
             }
-
             window.WebApp.ready();
+            const u = window.WebApp.initDataUnsafe?.user;
+            if (!u) { showError('Не удалось получить MAX ID'); return; }
+            maxUserId = u.id;
 
-            const initData = window.WebApp.initDataUnsafe;
-            console.log('📦 Данные из MAX:', initData);
-
-            const user = initData && initData.user ? initData.user : null;
-            const platform = window.WebApp.platform || 'unknown';
-            const version = window.WebApp.version || '?';
-
-            const displayData = {
-                max_user_id: user ? user.id : null,
-                first_name: user ? user.first_name : 'Гость',
-                last_name: user ? user.last_name : '',
-                platform: platform,
-                version: version
-            };
-
-            console.log('👤 Пользователь:', displayData);
-
-            if (!displayData.max_user_id) {
-                showError('Не удалось получить ваш MAX ID. Откройте через чат-бота.');
-                return;
-            }
-
-            loadClient(displayData);
-        }
-
-        // ============================================================
-        // 2. ЗАГРУЗКА ДАННЫХ КЛИЕНТА С БЭКЕНДА
-        // ============================================================
-        async function loadClient(displayData) {
             try {
-                const url = `${CONFIG.API_URL}/api/client/${displayData.max_user_id}`;
-                console.log('🌐 Запрос к:', url);
-
-                const response = await fetch(url);
-                console.log('📡 Ответ:', response.status);
-
-                if (response.status === 404) {
-                    // Клиент не найден — показываем MAX ID
-                    renderNotFound(displayData);
-                    return;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('✅ Данные:', data);
-                renderWallet(displayData, data);
-
+                const r = await fetch(`${API}/api/client/${maxUserId}/full`);
+                if (r.status === 404) { renderNotFound(u); return; }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                userData = await r.json();
+                renderTab();
             } catch (err) {
-                console.error('❌ Ошибка:', err);
-                showError('Не удалось загрузить данные: ' + err.message);
+                showError('Ошибка загрузки: ' + err.message);
             }
         }
 
-        // ============================================================
-        // 3. ОТРИСОВКА КОШЕЛЬКА
-        // ============================================================
-        function renderWallet(displayData, data) {
-            const fullName = data.name || [displayData.first_name, displayData.last_name].filter(Boolean).join(' ');
-            const avatarLetter = (data.name || displayData.first_name || '?')[0].toUpperCase();
+        function renderTabBar() {
+            const tabs = [
+                { id: 'wallet', ico: '💎', label: 'Кошелёк' },
+                { id: 'rules', ico: '📘', label: 'Правила' },
+                { id: 'orders', ico: '🔧', label: 'Ремонты' },
+                { id: 'share', ico: '🎁', label: 'Поделиться' }
+            ];
+            document.getElementById('tabbar').innerHTML = `<div class="tab-bar">${tabs.map(t =>
+                `<button class="tab-btn ${currentTab===t.id?'active':''}" onclick="switchTab('${t.id}')">
+                    <span class="ico">${t.ico}</span>${t.label}
+                </button>`).join('')}</div>`;
+        }
 
-            let lotsHtml = '';
-            if (data.lots && data.lots.length > 0) {
-                lotsHtml = data.lots.map(lot => `
-                    <div class="lot-item">
-                        <div>
-                            <div class="lot-reason">${lot.reason}</div>
-                            <div class="lot-expires">Сгорят: ${lot.expires_at}</div>
-                        </div>
-                        <div class="lot-amount">${formatMoney(lot.remaining)}</div>
-                    </div>
-                `).join('');
-            } else {
-                lotsHtml = '<div class="empty-state">Пока нет активных бонусов</div>';
-            }
+        function switchTab(tab) { currentTab = tab; renderTab(); window.scrollTo(0,0); }
+        function renderTab() {
+            renderTabBar();
+            if (currentTab === 'wallet') renderWallet();
+            if (currentTab === 'rules') renderRules();
+            if (currentTab === 'orders') renderOrders();
+            if (currentTab === 'share') renderShare();
+        }
 
-            const html = `
+        function renderWallet() {
+            const c = userData.client, m = userData.master, lots = userData.lots;
+            const lotsHtml = lots.length ? lots.map(l => `
+                <div class="lot">
+                    <div><div class="lot-reason">${l.reason}</div><div class="lot-exp">Сгорят: ${l.expires_at}</div></div>
+                    <div class="lot-amount">${fmt(l.remaining)}</div>
+                </div>`).join('') : '<div class="empty">Пока нет активных бонусов</div>';
+
+            document.getElementById('app').innerHTML = `
                 <div class="header">
-                    <div class="avatar">${avatarLetter}</div>
-                    <div>
-                        <div class="user-name">${fullName}</div>
-                        <div class="user-platform">${displayData.platform} • MAX ID: ${displayData.max_user_id}</div>
-                    </div>
+                    <div class="avatar">${c.name[0]}</div>
+                    <div class="user-name">${c.name}</div>
+                    <div class="user-sub">MAX ID: ${maxUserId}</div>
                 </div>
-
                 <div class="balance-card">
                     <div class="balance-label">💎 МОИ БОНУСЫ</div>
-                    <div class="balance-amount">${formatMoney(data.bonus_balance)}</div>
+                    <div class="balance-amount">${fmt(c.bonus_balance)}</div>
                     <div class="balance-sub">1 бонус = 1 рубль</div>
                 </div>
-
-                <div class="my-id-card">
-                    <div class="my-id-label">МОЙ ID ДЛЯ МАСТЕРА</div>
-                    <div class="my-id-value">${formatId(data.referral_code)}</div>
-                    <div class="my-id-hint">Покажите мастеру для списания бонусов</div>
+                <div class="id-card">
+                    <div class="id-label">МОЙ ID ДЛЯ МАСТЕРА</div>
+                    <div class="id-value">${c.referral_code.split('').join(' ')}</div>
+                    <div class="id-hint">Покажите этот ID мастеру для списания бонусов</div>
                 </div>
-
-                <div class="lots-section">
+                <div class="card">
                     <div class="section-title">📊 Активные партии бонусов</div>
                     ${lotsHtml}
                 </div>
-
-                <div style="text-align:center; margin-top:20px; color:#94a3b8; font-size:12px;">
-                    Мастер: ${data.master.full_name || '—'}<br>
-                    ИНН: ${data.master.inn || '—'} • ${data.master.workshop || '—'}
+                <div class="master-card">
+                    <div>👨‍🔧 Ваш мастер: <b>${m.full_name}</b></div>
+                    <div style="margin-top:4px;">🏢 ${m.workshop}</div>
+                    <div style="margin-top:4px;">📞 ${m.phone}</div>
+                    <div style="margin-top:4px;">ИНН: ${m.inn}</div>
                 </div>
             `;
-
-            document.getElementById('app').innerHTML = html;
         }
 
-        // ============================================================
-        // 4. КЛИЕНТ НЕ НАЙДЕН — показываем MAX ID
-        // ============================================================
-        function renderNotFound(displayData) {
-            const html = `
-                <div class="header">
-                    <div class="avatar">?</div>
-                    <div>
-                        <div class="user-name">${displayData.first_name || 'Гость'}</div>
-                        <div class="user-platform">${displayData.platform}</div>
-                    </div>
-                </div>
+        function renderRules() {
+            const p = userData.program;
+            const money = userData.client.bonus_balance;
+            const example = Math.round(money > 0 ? money : 5000);
+            const earnExample = Math.round(5000 * p.bonus_rate_default / 100);
 
-                <div class="not-found-box">
-                    <h3>🔍 Вас нет в базе мастера</h3>
-                    <p style="color:#92400e; font-size:14px;">
-                        Передайте мастеру ваш MAX ID, чтобы он добавил вас:
-                    </p>
-                    <div class="max-id-big">${displayData.max_user_id}</div>
-                    <p style="color:#92400e; font-size:12px; margin-top:12px;">
-                        После добавления закройте и откройте приложение заново
-                    </p>
-                </div>
-
-                <div style="text-align:center; margin-top:24px;">
-                    <button onclick="location.reload()" style="background:#2563eb; color:white; border:none; padding:14px 28px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;">
-                        🔄 Обновить
-                    </button>
-                </div>
-            `;
-            document.getElementById('app').innerHTML = html;
-        }
-
-        // ============================================================
-        // ВСПОМОГАТЕЛЬНЫЕ
-        // ============================================================
-        function formatMoney(amount) {
-            if (amount === null || amount === undefined) return '0 ₽';
-            return Number(amount).toLocaleString('ru-RU', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }) + ' ₽';
-        }
-
-        function formatId(code) {
-            if (!code) return '—';
-            return String(code).split('').join(' ');
-        }
-
-        function showError(message) {
             document.getElementById('app').innerHTML = `
-                <div class="error-box">❌ ${message}</div>
-                <div style="text-align:center; margin-top:16px;">
-                    <button onclick="location.reload()" style="background:#2563eb; color:white; border:none; padding:12px 24px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;">
-                        🔄 Попробовать снова
-                    </button>
+                <div class="header"><div class="user-name" style="font-size:22px;">📘 Как работают мои бонусы</div></div>
+                <div class="card">
+                    <div class="rule-block"><span class="rule-num">1</span><b>Как я получаю бонусы?</b><br>За каждый ремонт вы получаете <b>${p.bonus_rate_default}%</b> от суммы чека.<br><br>Например: чек 5 000 ₽ → вы получаете <b>${earnExample} ₽</b> бонусов.</div>
+                    <div class="rule-block"><span class="rule-num">2</span><b>Когда начисляют?</b><br>Бонусы приходят автоматически через <b>24 часа</b> после закрытия заявки.</div>
+                    <div class="rule-block"><span class="rule-num">3</span><b>Сколько живут бонусы?</b><br>${p.enable_expiration ? `Каждая партия бонусов живёт <b>${p.bonus_lifetime_months} месяцев</b> с момента начисления. Затем сгорает.` : '<b>Бонусы не сгорают</b> — действуют бессрочно.'}<br><br>Мы напоминаем заранее — за 60/30/7/1 день.</div>
+                    <div class="rule-block"><span class="rule-num">4</span><b>Как потратить?</b><br>Бонусами можно оплатить до <b>${p.bonus_max_spend_percent}%</b> от чека.<br><br>Порядок списания: сначала та партия, что сгорит раньше.</div>
+                    <div class="rule-block"><span class="rule-num">5</span><b>Как поделиться с близкими?</b><br>${p.enable_referral ? `Приходите вместе с другом.<br>После ремонта друга:<br>• Другу — скидка на сумму подарка<br>• Начисленные бонусы делятся <b>${p.referral_split_percent}/${100-p.referral_split_percent}</b> между вами и другом` : 'Реферальная программа у мастера отключена.'}</div>
+                    <div class="rule-block"><span class="rule-num">6</span><b>Дополнительные бонусы</b><br>🎂 День рождения — <b>${p.birthday_bonus} ₽</b><br>📸 Отзыв с фото — <b>${p.review_bonus} ₽</b><br>✍️ Заполнен профиль — <b>${p.profile_bonus} ₽</b></div>
                 </div>
             `;
         }
 
-        window.addEventListener('load', initMaxApp);
-        if (document.readyState === 'complete') initMaxApp();
+        function renderOrders() {
+            const orders = userData.orders;
+            if (!orders.length) {
+                document.getElementById('app').innerHTML = `<div class="header"><div class="user-name" style="font-size:22px;">🔧 Мои ремонты</div></div><div class="empty">Пока нет ремонтов</div>`;
+                return;
+            }
+            const now = new Date();
+            const html = orders.map(o => {
+                let warrantyHtml = '';
+                if (o.warranty_until) {
+                    const parts = o.warranty_until.split('.');
+                    const wDate = new Date(parts[2], parts[1]-1, parts[0]);
+                    const active = wDate > now;
+                    warrantyHtml = `<div class="warranty-badge ${active?'warranty-ok':''}">🛡 ${active?'Гарантия до ':'Гарантия истекла '}${o.warranty_until}</div>`;
+                }
+                return `<div class="card">
+                    <div class="order-card ${o.status==='closed'?'':''}">
+                        <div class="order-device">№${o.id} — ${o.device}</div>
+                        <div class="order-works">${o.works}</div>
+                        <div class="order-row">
+                            <div>${o.completed_at || ''}</div>
+                            <div class="order-amount">${fmt(o.final)}</div>
+                        </div>
+                        ${o.discount > 0 ? `<div class="order-row" style="color:#f59e0b; font-size:12px;"><div>Скидка бонусами:</div><div>−${fmt(o.discount)}</div></div>` : ''}
+                        ${warrantyHtml}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('app').innerHTML = `<div class="header"><div class="user-name" style="font-size:22px;">🔧 Мои ремонты</div><div class="user-sub">Всего: ${orders.length}</div></div>${html}`;
+        }
+
+        function renderShare() {
+            const balance = userData.client.bonus_balance;
+            document.getElementById('app').innerHTML = `
+                <div class="header"><div class="user-name" style="font-size:22px;">🎁 Поделиться бонусами</div><div class="user-sub">Пригласите друга — он получит скидку</div></div>
+                <div class="card">
+                    <div class="section-title">Ваш баланс: ${fmt(balance)}</div>
+                    ${balance < 100 ? '<div class="empty">Минимум 100 ₽ для подарка. Скопите ещё немного бонусов!</div>' : `
+                        <div class="amount-input" id="giftAmount" contenteditable="true" style="outline:none;">500</div>
+                        <div class="quick-btns">
+                            <button class="quick-btn" onclick="setAmount(25)">25%</button>
+                            <button class="quick-btn" onclick="setAmount(50)">50%</button>
+                            <button class="quick-btn" onclick="setAmount(100)">Всё</button>
+                        </div>
+                        <button class="btn-gift" onclick="createInvite()">🎁 Создать приглашение</button>
+                    `}
+                </div>
+                <div class="card">
+                    <div class="section-title">📖 Как это работает</div>
+                    <div class="rule-block"><b>1.</b> Вы дарите часть бонусов другу</div>
+                    <div class="rule-block"><b>2.</b> Друг скачивает приложение по ссылке</div>
+                    <div class="rule-block"><b>3.</b> Приходите вместе к мастеру, друг получает скидку</div>
+                    <div class="rule-block"><b>4.</b> После ремонта друга бонусы делятся <b>${userData.program.referral_split_percent}/${100-userData.program.referral_split_percent}</b> между вами</div>
+                </div>
+            `;
+        }
+
+        function setAmount(percent) {
+            const balance = userData.client.bonus_balance;
+            const val = Math.round(balance * percent / 100);
+            document.getElementById('giftAmount').textContent = val;
+        }
+
+        async function createInvite() {
+            const el = document.getElementById('giftAmount');
+            const amount = parseInt(el.textContent.replace(/\D/g,'')) || 0;
+            const balance = userData.client.bonus_balance;
+            if (amount < 100) { alert('Минимум 100 ₽'); return; }
+            if (amount > balance) { alert('Недостаточно бонусов'); return; }
+
+            try {
+                const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ amount })
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.detail || 'Ошибка');
+
+                if (window.WebApp && window.WebApp.shareContent) {
+                    window.WebApp.shareContent({ text: data.share_text });
+                } else if (navigator.share) {
+                    await navigator.share({ text: data.share_text, title: 'FixBonus' });
+                } else {
+                    await navigator.clipboard.writeText(data.share_text);
+                    alert('✅ Текст скопирован! Вставьте в WhatsApp/Telegram/СМС');
+                }
+                alert(`✅ Приглашение на ${amount} ₽ создано!`);
+            } catch (err) { alert('❌ ' + err.message); }
+        }
+
+        function renderNotFound(u) {
+            document.getElementById('app').innerHTML = `
+                <div class="header"><div class="avatar">?</div><div class="user-name">${u.first_name || 'Гость'}</div></div>
+                <div class="card" style="background:#fef3c7; border:1px solid #fcd34d; text-align:center;">
+                    <h3 style="color:#92400e; margin-bottom:12px;">🔍 Вас нет в базе мастера</h3>
+                    <p style="color:#92400e;">Передайте мастеру ваш MAX ID:</p>
+                    <div style="font-size:28px; font-weight:700; color:#92400e; margin:16px 0; letter-spacing:2px;">${u.id}</div>
+                </div>
+                <button class="btn-primary" onclick="location.reload()">🔄 Обновить</button>
+            `;
+        }
+
+        function showError(msg) {
+            document.getElementById('app').innerHTML = `<div class="error-box">❌ ${msg}</div>`;
+        }
+
+        function fmt(v) { return Number(v||0).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0}) + ' ₽'; }
+
+        window.addEventListener('load', init);
+        if (document.readyState === 'complete') init();
     </script>
 </body>
 </html>
