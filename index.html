@@ -164,14 +164,45 @@
             if (!inviteToken) {
                 inviteToken = urlCheckParams.get('invite') || urlCheckParams.get('startapp');
             }
-            if (inviteToken && inviteToken.startsWith('invite_')) {
-                inviteToken = inviteToken.replace('invite_', '');
-            }
-            console.log('🔗 Токен:', inviteToken);
+            // Разбираем токен: может быть invite_XXX или master_XXX
+let masterCode = null;
+if (inviteToken && inviteToken.startsWith('invite_')) {
+    inviteToken = inviteToken.replace('invite_', '');
+}
+if (inviteToken && inviteToken.startsWith('master_')) {
+    masterCode = inviteToken.replace('master_', '');
+    inviteToken = null;
+}
+console.log('🔗 Токен приглашения:', inviteToken);
+console.log('👨‍🔧 Код мастера:', masterCode);
 
             // === ЕСЛИ НОВЫЙ ===
-            if (role === 'new') {
-                if (inviteToken) {
+if (role === 'new') {
+    // Привязка к мастеру по ссылке
+    if (masterCode) {
+        try {
+            const r = await fetch(`${API}/api/client/${maxUserId}/join-by-master-code`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    master_code: masterCode,
+                    name: [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Новый клиент'
+                })
+            });
+            const data = await r.json();
+            if (r.ok) {
+                showToast(`✅ Вы привязаны к мастеру ${data.master_name}!`, 'success');
+                setTimeout(() => location.reload(), 1500);
+                return;
+            } else {
+                showToast('❌ ' + (data.detail || 'Ошибка'), 'error');
+            }
+        } catch (e) {
+            console.warn('master attach error:', e);
+        }
+    }
+    // Привязка через подарок
+    if (inviteToken) {
                     // Автоматическая регистрация как клиент через приглашение
                     try {
                         const r = await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
