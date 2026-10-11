@@ -229,32 +229,76 @@
             document.getElementById('giftAmount').textContent = val;
         }
 
-        async function createInvite() {
-            const el = document.getElementById('giftAmount');
-            const amount = parseInt(el.textContent.replace(/\D/g,'')) || 0;
-            const balance = userData.client.bonus_balance;
-            if (amount < 100) { alert('Минимум 100 ₽'); return; }
-            if (amount > balance) { alert('Недостаточно бонусов'); return; }
+async function createInvite() {
+    const el = document.getElementById('giftAmount');
+    const amount = parseInt(el.value) || 0;
+    const balance = userData.client.bonus_balance;
 
+    if (amount < 100) { alert('Минимум 100 ₽'); return; }
+    if (amount > balance) { alert('Недостаточно бонусов. Максимум: ' + fmt(balance)); return; }
+
+    const btn = document.getElementById('giftBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Создаём...';
+
+    try {
+        const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ amount })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || 'Ошибка сервера');
+
+        const shareText = data.share_text;
+        const shareUrl = data.invite_url; // Пока это ссылка на GitHub Pages
+
+        // 1. Пытаемся использовать нативный шеринг MAX
+        if (window.WebApp && typeof window.WebApp.shareContent === 'function') {
             try {
-                const r = await fetch(`${API}/api/client/${maxUserId}/invitation`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ amount })
+                await window.WebApp.shareContent({
+                    text: shareText,
+                    link: shareUrl
                 });
-                const data = await r.json();
-                if (!r.ok) throw new Error(data.detail || 'Ошибка');
-
-                if (window.WebApp && window.WebApp.shareContent) {
-                    window.WebApp.shareContent({ text: data.share_text });
-                } else if (navigator.share) {
-                    await navigator.share({ text: data.share_text, title: 'FixBonus' });
-                } else {
-                    await navigator.clipboard.writeText(data.share_text);
-                    alert('✅ Текст скопирован! Вставьте в WhatsApp/Telegram/СМС');
-                }
-                alert(`✅ Приглашение на ${amount} ₽ создано!`);
-            } catch (err) { alert('❌ ' + err.message); }
+                // Если окно открылось — выходим, ничего больше не нужно
+                btn.disabled = false;
+                btn.textContent = '🎁 Создать приглашение';
+                return;
+            } catch (e) {
+                console.warn('WebApp.shareContent не сработал, пробуем запасной вариант', e);
+            }
         }
+
+        // 2. Запасной вариант — Web Share API (iOS Safari / Android Chrome)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'FixBonus — бонусы на ремонт',
+                    text: shareText,
+                    url: shareUrl
+                });
+                btn.disabled = false;
+                btn.textContent = '🎁 Создать приглашение';
+                return;
+            } catch (e) {
+                console.warn('navigator.share не сработал', e);
+            }
+        }
+
+        // 3. Последний fallback — показываем модальное окно с копированием
+        lastInviteText = shareText;
+        document.getElementById('inviteText').textContent = shareText;
+        document.getElementById('inviteModal').classList.add('active');
+
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🎁 Создать приглашение';
+        }
+    }
+}
 
         function renderNotFound(u) {
             document.getElementById('app').innerHTML = `
