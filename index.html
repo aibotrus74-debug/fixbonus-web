@@ -108,6 +108,15 @@
         }
 
         async function init() {
+                       // ===== ПРОВЕРКА РОЛИ =====
+            const urlCheckParams = new URLSearchParams(window.location.search);
+
+            // Тестовый режим: ?test_master=100000001 — открыть панель мастера
+            const testMaster = urlCheckParams.get('test_master');
+            if (testMaster) {
+                window.location.href = 'master.html?uid=' + testMaster;
+                return;
+            }
             if (typeof window.WebApp === 'undefined') {
                 showError('Откройте через чат-бота в MAX');
                 return;
