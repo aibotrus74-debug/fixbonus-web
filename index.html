@@ -52,18 +52,23 @@
         .quick-btn { flex:1; padding:10px; border-radius:10px; background:#f1f5f9; border:none; font-size:14px; font-weight:600; cursor:pointer; color:#2563eb; }
         .master-card { background:white; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.05); font-size:13px; }
         .master-card b { color:#2563eb; }
+        /* Плашка подарка */
+        .gift-banner { background:linear-gradient(135deg,#10b981,#059669); color:white; border-radius:16px; padding:20px; margin-bottom:16px; box-shadow:0 4px 16px rgba(16,185,129,0.3); }
+        .gift-banner h3 { font-size:16px; margin-bottom:8px; }
+        .gift-banner .amount { font-size:32px; font-weight:700; margin:8px 0; }
+        .gift-banner .from { font-size:13px; opacity:0.9; }
         /* Модальное окно */
         .modal-bg { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; padding:16px; }
         .modal-bg.active { display:flex; }
         .modal { background:white; border-radius:20px; padding:20px; max-width:500px; width:100%; max-height:90vh; overflow-y:auto; }
         .modal h3 { font-size:18px; margin-bottom:14px; }
-        .share-text { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:280px; overflow-y:auto; margin-bottom:14px; font-family:-apple-system,monospace; }
+        .share-text { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:280px; overflow-y:auto; margin-bottom:14px; }
         .modal-actions { display:flex; flex-direction:column; gap:8px; }
         .modal-btn { padding:14px; border-radius:12px; border:none; font-size:15px; font-weight:600; cursor:pointer; }
         .btn-share { background:#10b981; color:white; }
         .btn-copy { background:#2563eb; color:white; }
         .btn-close { background:#f1f5f9; color:#64748b; }
-        /* Toast-уведомления */
+        /* Toast */
         .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); padding:14px 20px; border-radius:12px; color:white; font-size:14px; font-weight:500; z-index:1000; box-shadow:0 4px 20px rgba(0,0,0,0.25); max-width:90%; text-align:center; animation:slideDown 0.3s ease; }
         .toast-success { background:#10b981; }
         .toast-error { background:#ef4444; }
@@ -75,7 +80,6 @@
     <div id="app"><div class="loader">⏳ Загрузка...</div></div>
     <div id="tabbar"></div>
 
-    <!-- Модальное окно для приглашения -->
     <div class="modal-bg" id="inviteModal">
         <div class="modal">
             <h3>🎁 Приглашение готово!</h3>
@@ -95,12 +99,11 @@
         let userData = null;
         let currentTab = 'wallet';
         let lastInviteText = '';
+        let pendingGift = null;
 
-        // ============ TOAST-УВЕДОМЛЕНИЯ (заменяют alert) ============
         function showToast(msg, type = 'info') {
-            const cls = 'toast toast-' + type;
             const el = document.createElement('div');
-            el.className = cls;
+            el.className = 'toast toast-' + type;
             el.textContent = msg;
             document.body.appendChild(el);
             setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; }, 2500);
@@ -117,11 +120,50 @@
             if (!u) { showError('Не удалось получить MAX ID'); return; }
             maxUserId = u.id;
 
+            // === ПРИЁМ ПРИГЛАШЕНИЯ ===
+            const urlParams = new URLSearchParams(window.location.search);
+            const inviteToken = urlParams.get('invite');
+            console.log('🔗 Token в URL:', inviteToken);
+
+            if (inviteToken) {
+                try {
+                    const r = await fetch(`${API}/api/client/${maxUserId}/accept-invitation`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            token: inviteToken,
+                            name: [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Новый клиент'
+                        })
+                    });
+                    const data = await r.json();
+                    if (r.ok) {
+                        showToast(`🎁 Вам подарили ${Math.round(data.amount)} ₽ от ${data.giver_name}!`, 'success');
+                    } else if (r.status !== 400) {
+                        console.warn('Приглашение:', data.detail);
+                    }
+                    // Очищаем URL, чтобы не срабатывало повторно
+                    window.history.replaceState({}, '', window.location.pathname);
+                } catch (e) {
+                    console.warn('Ошибка принятия приглашения:', e);
+                }
+            }
+
+            // === ЗАГРУЗКА ДАННЫХ ===
             try {
                 const r = await fetch(`${API}/api/client/${maxUserId}/full`);
                 if (r.status === 404) { renderNotFound(u); return; }
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 userData = await r.json();
+
+                // Загружаем подарок (если есть)
+                try {
+                    const gr = await fetch(`${API}/api/client/${maxUserId}/pending-gift`);
+                    if (gr.ok) {
+                        const gd = await gr.json();
+                        pendingGift = gd.gift;
+                    }
+                } catch (e) { console.warn('gift load:', e); }
+
                 renderTab();
             } catch (err) {
                 showError('Ошибка загрузки: ' + err.message);
@@ -157,12 +199,25 @@
                     <div><div class="lot-reason">${l.reason}</div><div class="lot-exp">Сгорят: ${l.expires_at}</div></div>
                     <div class="lot-amount">${fmt(l.remaining)}</div>
                 </div>`).join('') : '<div class="empty">Пока нет активных бонусов</div>';
+
+            const giftHtml = pendingGift ? `
+                <div class="gift-banner">
+                    <h3>🎁 Вам подарили бонусы!</h3>
+                    <div class="amount">${fmt(pendingGift.amount)}</div>
+                    <div class="from">От: <b>${pendingGift.giver_name}</b> (ID ${pendingGift.giver_code})</div>
+                    <div class="from" style="margin-top:8px; font-size:12px;">
+                        Приходите к мастеру — эти бонусы будут использованы при оплате ремонта
+                    </div>
+                </div>
+            ` : '';
+
             document.getElementById('app').innerHTML = `
                 <div class="header">
                     <div class="avatar">${c.name[0]}</div>
                     <div class="user-name">${c.name}</div>
                     <div class="user-sub">MAX ID: ${maxUserId}</div>
                 </div>
+                ${giftHtml}
                 <div class="balance-card">
                     <div class="balance-label">💎 МОИ БОНУСЫ</div>
                     <div class="balance-amount">${fmt(c.bonus_balance)}</div>
@@ -247,8 +302,8 @@
                 <div class="card">
                     <div class="section-title">📖 Как это работает</div>
                     <div class="rule-block"><b>1.</b> Вы дарите часть бонусов другу</div>
-                    <div class="rule-block"><b>2.</b> Друг скачивает приложение по ссылке</div>
-                    <div class="rule-block"><b>3.</b> Приходите вместе к мастеру, друг получает скидку</div>
+                    <div class="rule-block"><b>2.</b> Друг открывает ссылку — сразу становится вашим рефералом</div>
+                    <div class="rule-block"><b>3.</b> Приходите вместе к мастеру — друг получает скидку</div>
                     <div class="rule-block"><b>4.</b> После ремонта друга бонусы делятся <b>${userData.program.referral_split_percent}/${100-userData.program.referral_split_percent}</b> между вами</div>
                 </div>
             `;
@@ -262,16 +317,10 @@
         }
 
         async function createInvite() {
-            // === Устойчивое чтение суммы ===
             const el = document.getElementById('giftAmount');
             if (!el) { showToast('Ошибка: поле не найдено', 'error'); return; }
-
-            const raw = el.value !== undefined && el.value !== null && el.value !== '' 
-                ? String(el.value) 
-                : String(el.textContent || '');
-            const cleaned = raw.replace(/[^\d]/g, '');
-            const amount = parseInt(cleaned, 10) || 0;
-
+            const raw = String(el.value || el.textContent || '');
+            const amount = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
             const balance = userData.client.bonus_balance;
 
             if (amount < 100) { showToast('Минимум 100 ₽. Вы ввели: ' + amount, 'error'); return; }
@@ -304,53 +353,37 @@
             }
         }
 
-        // === Попытка поделиться через нативный шеринг ===
         async function tryNativeShare() {
             const text = lastInviteText;
             if (!text) { showToast('Нет текста для отправки', 'error'); return; }
-
-            // 1. MAX Bridge native share
             try {
                 if (window.WebApp && typeof window.WebApp.shareContent === 'function') {
                     await window.WebApp.shareContent({ text: text });
                     return;
                 }
-            } catch (e) {
-                console.warn('WebApp.shareContent failed:', e);
-            }
-
-            // 2. Web Share API (iOS Safari, Android Chrome)
+            } catch (e) { console.warn('shareContent:', e); }
             try {
                 if (navigator.share) {
-                    await navigator.share({ text: text, title: 'FixBonus — бонусы на ремонт' });
+                    await navigator.share({ text: text, title: 'FixBonus' });
                     return;
                 }
             } catch (e) {
-                console.warn('navigator.share failed:', e);
-                // Пользователь мог просто закрыть окно — это не ошибка
                 if (e && e.name === 'AbortError') return;
+                console.warn('navigator.share:', e);
             }
-
-            // 3. Fallback — копирование
             await copyInvite();
         }
 
-        // === Копирование текста ===
         async function copyInvite() {
             const text = lastInviteText;
             if (!text) return;
-
             try {
                 if (navigator.clipboard && window.isSecureContext) {
                     await navigator.clipboard.writeText(text);
                     showToast('✅ Текст скопирован! Вставьте другу.', 'success');
                     return;
                 }
-            } catch (e) {
-                console.warn('clipboard failed:', e);
-            }
-
-            // Fallback для старых браузеров
+            } catch (e) { console.warn('clipboard:', e); }
             try {
                 const ta = document.createElement('textarea');
                 ta.value = text;
